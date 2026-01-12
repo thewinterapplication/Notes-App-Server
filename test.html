@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elysia Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        .result { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Elysia Backend Test</h1>
+    <p>Click the button to fetch data from the backend.</p>
+    <button id="fetchBtn">Fetch Data</button>
+    <div id="result" class="result">Waiting...</div>
+
+    <script>
+        document.getElementById('fetchBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerText = "Loading...";
+            try {
+                // Fetch from the API endpoint we will create
+                const response = await fetch('/api/hello');
+                const data = await response.json();
+                resultDiv.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                resultDiv.innerText = "Error: " + err.message;
+            }
+        });
+    </script>
+</body>
+</html>

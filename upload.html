@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload PDF - Elysia Storage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 0.75rem;
+            padding: 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .icon {
+            width: 48px;
+            height: 48px;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .upload-area:hover .icon {
+            color: var(--primary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-top: 1.5rem;
+            font-family: inherit;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+            color: var(--text-muted);
+        }
+
+        #file-name {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .result-container {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .link-box {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .success-icon {
+            color: var(--success);
+            width: 32px;
+            height: 32px;
+            margin-bottom: 0.5rem;
+        }
+
+        .generated-link {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .generated-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Form Styles */
+        .form-group {
+            text-align: left;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            /* Important for width */
+        }
+
+        .input-field:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-small {
+            padding: 0.75rem 1rem;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Upload PDF</h1>
+        <p class="subtitle">Securely save your documents to storage</p>
+
+        <div class="upload-area" id="drop-zone">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p style="margin: 0; color: var(--text-muted);">Drag & Drop your PDF here</p>
+            <p style="margin: 0.5rem 0; color: var(--text-muted); font-size: 0.8rem;">OR</p>
+            <span style="color: var(--primary); font-weight: 600;">Browse Files</span>
+            <input type="file" id="file-input" class="file-input" accept=".pdf">
+        </div>
+
+        <div id="file-name" style="margin-bottom: 1rem;"></div>
+
+        <div class="form-group">
+            <label class="form-label" for="custom-filename">File Name (Optional)</label>
+            <input type="text" id="custom-filename" class="input-field" placeholder="Enter custom file name">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="subject-select">Subject</label>
+            <div class="input-row">
+                <select id="subject-select" class="input-field">
+                    <option value="" disabled selected>Select Course</option>
+                    <option value="CSE">CSE - Computer Science and Engineering</option>
+                    <option value="ECE">ECE - Electronics and Communication Engineering</option>
+                    <option value="EEE">EEE - Electrical and Electronics Engineering</option>
+                    <option value="CIVIL">CIVIL - Civil Engineering</option>
+                    <option value="MECHANICAL">MECHANICAL - Mechanical Engineering</option>
+                </select>
+                <button type="button" id="new-subject-btn" class="btn-small">New</button>
+            </div>
+        </div>
+
+        <button id="upload-btn" class="btn" disabled>Upload File</button>
+
+        <div id="result" class="result-container">
+            <svg xmlns="http://www.w3.org/2000/svg" class="success-icon" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2" style="margin: 0 auto; display: block;">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 style="margin: 0.5rem 0; font-size: 1.1rem; color: var(--success);">Upload Complete!</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Your file is ready.</p>
+
+            <div class="link-box">
+                <a href="#" target="_blank" id="pdf-link" class="generated-link">View PDF</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileNameDisplay = document.getElementById('file-name');
+        const resultContainer = document.getElementById('result');
+        const pdfLink = document.getElementById('pdf-link');
+
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                alert('Please select a PDF file.');
+                return;
+            }
+            selectedFile = file;
+            fileNameDisplay.textContent = file.name;
+            uploadBtn.disabled = false;
+            resultContainer.style.display = 'none';
+            uploadBtn.textContent = 'Upload File';
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+
+            const subjectSelect = document.getElementById('subject-select');
+            const customFileNameInput = document.getElementById('custom-filename');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            if (subjectSelect.value) {
+                formData.append('subject', subjectSelect.value);
+            }
+
+            if (customFileNameInput.value.trim()) {
+                formData.append('customFileName', customFileNameInput.value.trim());
+            }
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultContainer.style.display = 'block';
+                    pdfLink.href = data.url;
+                    pdfLink.textContent = window.location.origin + data.url;
+                    uploadBtn.textContent = 'Uploaded';
+                } else {
+                    alert('Upload failed.');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Upload File';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred.');
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload File';
+            }
+        });
+    </script>
+
+
+    <script>
+        // Separate script for UI logic to keep things clean
+        const newSubjectBtn = document.getElementById('new-subject-btn');
+        const subjectSelect = document.getElementById('subject-select');
+
+        newSubjectBtn.addEventListener('click', () => {
+            const newSubject = prompt("Enter new subject name:");
+            if (newSubject && newSubject.trim() !== "") {
+                const trimmedSubject = newSubject.trim();
+
+                // Check if already exists
+                let exists = false;
+                for (let i = 0; i < subjectSelect.options.length; i++) {
+                    if (subjectSelect.options[i].value === trimmedSubject) {
+                        exists = true;
+                        subjectSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+
+                if (!exists) {
+                    const option = document.createElement("option");
+                    option.text = trimmedSubject;
+                    option.value = trimmedSubject;
+                    subjectSelect.add(option);
+                    subjectSelect.selectedIndex = subjectSelect.options.length - 1;
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
