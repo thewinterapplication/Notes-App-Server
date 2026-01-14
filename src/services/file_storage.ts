@@ -26,11 +26,6 @@ export class FileStorageService {
 
         const uniqueFileName = `${Date.now()}_${finalFileName}`;
 
-        console.log("[Upload] Starting upload...");
-        console.log("[Upload] Original filename:", file.name);
-        console.log("[Upload] Final filename:", uniqueFileName);
-        console.log("[Upload] Bucket:", config.minio.bucket);
-
         // Convert File to Buffer for MinIO upload
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -44,11 +39,8 @@ export class FileStorageService {
             { 'Content-Type': file.type }
         );
 
-        console.log("[Upload] Successfully uploaded to MinIO");
-
         // Use backend URL to stream files (not direct MinIO URL)
         const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
-        console.log("[Upload] Generated URL:", fileUrl);
 
         // Save metadata to MongoDB
         const fileDoc = await FileModel.create({
@@ -64,5 +56,9 @@ export class FileStorageService {
             fileName: uniqueFileName,
             id: fileDoc._id
         };
+    }
+
+    async getFileStream(fileName: string) {
+        return await minioClient.getObject(config.minio.bucket, fileName);
     }
 }
