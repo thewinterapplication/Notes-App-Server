@@ -359,7 +359,7 @@
                     const data = await response.json();
                     resultContainer.style.display = 'block';
                     pdfLink.href = data.url;
-                    pdfLink.textContent = window.location.origin + data.url;
+                    pdfLink.textContent = data.url;
                     uploadBtn.textContent = 'Uploaded';
                 } else {
                     alert('Upload failed.');

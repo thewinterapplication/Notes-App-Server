@@ -1,10 +1,18 @@
+import { Client } from "minio";
 import { config } from "../config";
 import { FileModel } from "../models/File";
+
+const minioClient = new Client({
+    endPoint: config.minio.endPoint,
+    port: config.minio.port,
+    useSSL: config.minio.useSSL,
+    accessKey: config.minio.accessKey,
+    secretKey: config.minio.secretKey
+});
 
 export class FileStorageService {
     async saveFile(file: File, options?: { subject?: string, customFileName?: string }) {
         // Use custom name if provided, otherwise preserve original name but sanitizing it
-        // If custom name doesn't have extension, append the one from original file
         let finalFileName = file.name;
 
         if (options?.customFileName) {
@@ -17,16 +25,34 @@ export class FileStorageService {
         }
 
         const uniqueFileName = `${Date.now()}_${finalFileName}`;
-        const filePath = config.storage.getFullPath(uniqueFileName);
 
-        // Ensure the file is written to the configured external storage path
-        await Bun.write(filePath, file);
+        console.log("[Upload] Starting upload...");
+        console.log("[Upload] Original filename:", file.name);
+        console.log("[Upload] Final filename:", uniqueFileName);
+        console.log("[Upload] Bucket:", config.minio.bucket);
 
-        const fileUrl = `${config.baseUrl}/files/${uniqueFileName}`;
+        // Convert File to Buffer for MinIO upload
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Upload to MinIO
+        await minioClient.putObject(
+            config.minio.bucket,
+            uniqueFileName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': file.type }
+        );
+
+        console.log("[Upload] Successfully uploaded to MinIO");
+
+        // Use backend URL to stream files (not direct MinIO URL)
+        const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+        console.log("[Upload] Generated URL:", fileUrl);
 
         // Save metadata to MongoDB
         const fileDoc = await FileModel.create({
-            fileName: finalFileName, // User friendly name
+            fileName: finalFileName,
             subject: options?.subject || "uncategorized",
             fileUrl: fileUrl,
             likesCount: 0,
