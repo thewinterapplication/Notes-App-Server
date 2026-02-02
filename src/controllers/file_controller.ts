@@ -5,9 +5,24 @@ import { FileModel } from "../models/File";
 export const fileController = new Elysia()
     .decorate('fileService', new FileStorageService())
 
-    // Get files by subject
+    // Get distinct subjects for a course
+    .get("/api/courses/:course/subjects", async ({ params }) => {
+        const subjects = await FileModel.distinct("subject", { course: params.course });
+        return { subjects: subjects.filter(s => s && s !== "uncategorized") };
+    })
+
+    // Get files by course and subject
+    .get("/api/courses/:course/subjects/:subject/files", async ({ params }) => {
+        const files = await FileModel.find({
+            course: params.course,
+            subject: params.subject
+        }).sort({ createdAt: -1 });
+        return { files };
+    })
+
+    // Get files by subject (legacy - for backward compatibility)
     .get("/api/files/subject/:subject", async ({ params }) => {
-        const files = await FileModel.find({ subject: params.subject }).sort({ createdAt: -1 });
+        const files = await FileModel.find({ course: params.subject }).sort({ createdAt: -1 });
         return { files };
     })
 

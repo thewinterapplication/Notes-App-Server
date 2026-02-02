@@ -11,7 +11,7 @@ const minioClient = new Client({
 });
 
 export class FileStorageService {
-    async saveFile(file: File, options?: { subject?: string, customFileName?: string }) {
+    async saveFile(file: File, options?: { course?: string, subject?: string, customFileName?: string }) {
         // Use custom name if provided, otherwise preserve original name but sanitizing it
         let finalFileName = file.name;
 
@@ -45,6 +45,7 @@ export class FileStorageService {
         // Save metadata to MongoDB
         const fileDoc = await FileModel.create({
             fileName: finalFileName,
+            course: options?.course || "uncategorized",
             subject: options?.subject || "uncategorized",
             fileUrl: fileUrl,
             likesCount: 0,
