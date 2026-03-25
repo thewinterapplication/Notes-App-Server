@@ -4,6 +4,10 @@ import { uploadController } from "./controllers/upload_controller";
 import { otpController } from "./controllers/otp_controller";
 import { userController } from "./controllers/user_controller";
 import { fileController } from "./controllers/file_controller";
+import { pyqController } from "./controllers/pyq_controller";
+import { pyqUploadController } from "./controllers/pyq_upload_controller";
+import { placementController } from "./controllers/placement_controller";
+import { placementUploadController } from "./controllers/placement_upload_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
@@ -30,6 +34,10 @@ const app = new Elysia()
   .use(otpController)
   .use(userController)
   .use(fileController)
+  .use(pyqController)
+  .use(pyqUploadController)
+  .use(placementController)
+  .use(placementUploadController)
 
   .listen({
     port: 3000,

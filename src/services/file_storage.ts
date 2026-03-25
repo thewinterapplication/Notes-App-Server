@@ -1,6 +1,8 @@
 import { Client } from "minio";
 import { config } from "../config";
 import { FileModel } from "../models/File";
+import { PyqModel } from "../models/Pyq";
+import { PlacementModel } from "../models/Placement";
 
 const minioClient = new Client({
     endPoint: config.minio.endPoint,
@@ -56,6 +58,92 @@ export class FileStorageService {
             url: fileUrl,
             fileName: uniqueFileName,
             id: fileDoc._id
+        };
+    }
+
+    async savePyqFile(file: File, options?: { course?: string, subject?: string, customFileName?: string }) {
+        let finalFileName = file.name;
+
+        if (options?.customFileName) {
+            const extension = file.name.split('.').pop();
+            if (options.customFileName.endsWith(`.${extension}`)) {
+                finalFileName = options.customFileName;
+            } else {
+                finalFileName = `${options.customFileName}.${extension}`;
+            }
+        }
+
+        const uniqueFileName = `${Date.now()}_${finalFileName}`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        await minioClient.putObject(
+            config.minio.bucket,
+            uniqueFileName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': file.type }
+        );
+
+        const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+
+        const pyqDoc = await PyqModel.create({
+            fileName: finalFileName,
+            course: options?.course || "uncategorized",
+            subject: options?.subject || "uncategorized",
+            fileUrl: fileUrl,
+            likesCount: 0,
+            viewCount: 0
+        });
+
+        return {
+            url: fileUrl,
+            fileName: uniqueFileName,
+            id: pyqDoc._id
+        };
+    }
+
+    async savePlacementFile(file: File, options?: { course?: string, subject?: string, customFileName?: string }) {
+        let finalFileName = file.name;
+
+        if (options?.customFileName) {
+            const extension = file.name.split('.').pop();
+            if (options.customFileName.endsWith(`.${extension}`)) {
+                finalFileName = options.customFileName;
+            } else {
+                finalFileName = `${options.customFileName}.${extension}`;
+            }
+        }
+
+        const uniqueFileName = `${Date.now()}_${finalFileName}`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        await minioClient.putObject(
+            config.minio.bucket,
+            uniqueFileName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': file.type }
+        );
+
+        const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+
+        const placementDoc = await PlacementModel.create({
+            fileName: finalFileName,
+            course: options?.course || "uncategorized",
+            subject: options?.subject || "uncategorized",
+            fileUrl: fileUrl,
+            likesCount: 0,
+            viewCount: 0
+        });
+
+        return {
+            url: fileUrl,
+            fileName: uniqueFileName,
+            id: placementDoc._id
         };
     }
 
