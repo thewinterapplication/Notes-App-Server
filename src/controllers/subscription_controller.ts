@@ -107,7 +107,7 @@ export const subscriptionController = new Elysia({ prefix: "/api/subscriptions" 
                 };
             }
 
-            const currentSubscription = normalizeUserSubscription(user.subscription);
+            let currentSubscription = normalizeUserSubscription(user.subscription);
 
             if (
                 currentSubscription.subscriptionId &&
@@ -117,34 +117,66 @@ export const subscriptionController = new Elysia({ prefix: "/api/subscriptions" 
                     currentSubscription.status === "created" &&
                     currentSubscription.planCode === body.planCode
                 ) {
+                    // Verify the subscription is still valid on Razorpay before reusing
+                    try {
+                        const rzpSub = await fetchRazorpaySubscription(currentSubscription.subscriptionId);
+                        console.log(`[subscriptions] Existing "created" subscription ${rzpSub.id} has Razorpay status: ${rzpSub.status}`);
+
+                        if (rzpSub.status === "created") {
+                            console.log(`[subscriptions] Reusing existing subscription ${rzpSub.id}`);
+                            return {
+                                success: true,
+                                message: "Using your pending subscription checkout session.",
+                                data: {
+                                    checkout: buildCheckoutPayload({
+                                        user,
+                                        subscriptionId: currentSubscription.subscriptionId,
+                                        shortUrl: currentSubscription.shortUrl ?? rzpSub.short_url,
+                                        planCode: plan.code,
+                                        planName: plan.title,
+                                        planDescription: plan.description
+                                    }),
+                                    user: serializeUser(user)
+                                }
+                            };
+                        }
+
+                        // Subscription expired or changed on Razorpay - update local state and fall through to create new
+                        console.log(`[subscriptions] Subscription ${rzpSub.id} is no longer "created" (status: ${rzpSub.status}), creating fresh one`);
+                        user.subscription = buildUserSubscriptionState({
+                            existing: user.subscription,
+                            subscription: rzpSub
+                        });
+                        await user.save();
+                        currentSubscription = normalizeUserSubscription(user.subscription);
+                    } catch (error) {
+                        console.log(`[subscriptions] Failed to verify existing subscription ${currentSubscription.subscriptionId}, creating fresh one:`, error);
+                        user.subscription = createEmptySubscriptionState();
+                        await user.save();
+                        currentSubscription = normalizeUserSubscription(user.subscription);
+                    }
+                }
+
+                // Re-check after potential refresh - still live and not "created"? Block it.
+                if (
+                    currentSubscription.subscriptionId &&
+                    LIVE_SUBSCRIPTION_STATUSES.has(currentSubscription.status) &&
+                    currentSubscription.status !== "created"
+                ) {
+                    set.status = 409;
+                    console.log(`[subscriptions] User ${body.phone} blocked: live subscription ${currentSubscription.subscriptionId} (${currentSubscription.status})`);
                     return {
-                        success: true,
-                        message: "Using your pending subscription checkout session.",
+                        success: false,
+                        message:
+                            "You already have a live subscription. Manage or cancel it before starting another one.",
                         data: {
-                            checkout: buildCheckoutPayload({
-                                user,
-                                subscriptionId: currentSubscription.subscriptionId,
-                                shortUrl: currentSubscription.shortUrl,
-                                planCode: plan.code,
-                                planName: plan.title,
-                                planDescription: plan.description
-                            }),
                             user: serializeUser(user)
                         }
                     };
                 }
-
-                set.status = 409;
-                return {
-                    success: false,
-                    message:
-                        "You already have a live subscription. Manage or cancel it before starting another one.",
-                    data: {
-                        user: serializeUser(user)
-                    }
-                };
             }
 
+            console.log(`[subscriptions] Creating new subscription for user ${body.phone}, plan ${body.planCode}`);
             const subscription = await createRazorpaySubscription({
                 plan,
                 userName: user.name,

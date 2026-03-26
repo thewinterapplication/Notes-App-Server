@@ -244,19 +244,33 @@ const resolveConfiguredPlanTemplates = () =>
         })
         .filter((template): template is ResolvedAppSubscriptionPlanTemplate => Boolean(template));
 
+const MAX_SUBSCRIPTION_YEARS = 29; // UPI mandates cap at 30 years
+
 const maxTotalCountFor = (period: RazorpayPlanPeriod, interval: number) => {
+    const maxMonths = MAX_SUBSCRIPTION_YEARS * 12;
+
+    let periodsPerMonth: number;
     switch (period) {
         case "daily":
-            return Math.max(1, Math.floor(36500 / interval));
+            periodsPerMonth = 30;
+            break;
         case "weekly":
-            return Math.max(1, Math.floor(5200 / interval));
+            periodsPerMonth = 4;
+            break;
         case "monthly":
-            return Math.max(1, Math.floor(1200 / interval));
+            periodsPerMonth = 1;
+            break;
         case "yearly":
-            return Math.max(1, Math.floor(100 / interval));
+            periodsPerMonth = 1 / 12;
+            break;
         default:
-            return 120;
+            periodsPerMonth = 1;
+            break;
     }
+
+    const count = Math.max(1, Math.floor((maxMonths * periodsPerMonth) / interval));
+    console.log(`[razorpay] maxTotalCountFor(${period}, ${interval}) = ${count}`);
+    return count;
 };
 
 const buildLocalConfiguredPlanId = (code: string, amountInPaise: number) =>
@@ -552,14 +566,19 @@ export const createRazorpaySubscription = async (args: {
         )).planId
         : args.plan.planId;
 
-    return razorpayRequest<RazorpaySubscriptionEntity>("/subscriptions", {
+    const totalCount = maxTotalCountFor(args.plan.period, args.plan.interval);
+    const expireBy = Math.floor(Date.now() / 1000) + 20 * 60;
+
+    console.log(`[razorpay] Creating subscription: plan_id=${resolvedPlanId}, total_count=${totalCount}, expire_by=${expireBy}, period=${args.plan.period}, interval=${args.plan.interval}, user=${args.userPhone}`);
+
+    const result = await razorpayRequest<RazorpaySubscriptionEntity>("/subscriptions", {
         method: "POST",
         body: JSON.stringify({
             plan_id: resolvedPlanId,
-            total_count: maxTotalCountFor(args.plan.period, args.plan.interval),
+            total_count: totalCount,
             quantity: 1,
             customer_notify: true,
-            expire_by: Math.floor(Date.now() / 1000) + 20 * 60,
+            expire_by: expireBy,
             notes: {
                 app_name: config.razorpay.brandName,
                 app_plan_code: args.plan.code,
@@ -568,6 +587,9 @@ export const createRazorpaySubscription = async (args: {
             }
         })
     });
+
+    console.log(`[razorpay] Subscription created: id=${result.id}, status=${result.status}, short_url=${result.short_url}`);
+    return result;
 };
 
 export const fetchRazorpaySubscription = async (subscriptionId: string) =>
