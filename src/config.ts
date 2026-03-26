@@ -1,5 +1,10 @@
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const TWOFACTOR_API_KEY = process.env.TWOFACTOR_API_KEY || "";
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+const RAZORPAY_BRAND_NAME = process.env.RAZORPAY_BRAND_NAME || "College Notes";
+const RAZORPAY_THEME_COLOR = process.env.RAZORPAY_THEME_COLOR || "#FF6A3D";
 
 // MinIO Configuration
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "localhost";
@@ -25,5 +30,12 @@ export const config = {
     otp: {
         apiKey: TWOFACTOR_API_KEY,
         baseUrl: "https://2factor.in/API/V1"
+    },
+    razorpay: {
+        keyId: RAZORPAY_KEY_ID,
+        keySecret: RAZORPAY_KEY_SECRET,
+        webhookSecret: RAZORPAY_WEBHOOK_SECRET,
+        brandName: RAZORPAY_BRAND_NAME,
+        themeColor: RAZORPAY_THEME_COLOR
     }
 };

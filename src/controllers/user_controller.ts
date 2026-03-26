@@ -1,5 +1,15 @@
 import { Elysia, t } from "elysia";
-import { UserModel } from "../models/User";
+import { IUser, normalizeUserSubscription, UserModel } from "../models/User";
+
+const serializeUser = (user: IUser) => ({
+    id: user._id,
+    name: user.name,
+    phone: user.phone,
+    favourites: user.favourites,
+    lastTransaction: user.lastTransaction,
+    createdAt: user.createdAt,
+    subscription: normalizeUserSubscription(user.subscription)
+});
 
 export const userController = new Elysia({ prefix: "/api" })
 
@@ -28,11 +38,7 @@ export const userController = new Elysia({ prefix: "/api" })
             return {
                 success: true,
                 message: "Registration successful",
-                data: {
-                    id: newUser._id,
-                    name: newUser.name,
-                    phone: newUser.phone
-                }
+                data: serializeUser(newUser)
             };
         } catch (error: any) {
             return {
@@ -64,13 +70,7 @@ export const userController = new Elysia({ prefix: "/api" })
             return {
                 success: true,
                 message: "Login successful",
-                data: {
-                    id: user._id,
-                    name: user.name,
-                    phone: user.phone,
-                    favourites: user.favourites,
-                    lastTransaction: user.lastTransaction
-                }
+                data: serializeUser(user)
             };
         } catch (error: any) {
             return {
@@ -98,14 +98,7 @@ export const userController = new Elysia({ prefix: "/api" })
 
             return {
                 success: true,
-                data: {
-                    id: user._id,
-                    name: user.name,
-                    phone: user.phone,
-                    favourites: user.favourites,
-                    lastTransaction: user.lastTransaction,
-                    createdAt: user.createdAt
-                }
+                data: serializeUser(user)
             };
         } catch (error: any) {
             return {

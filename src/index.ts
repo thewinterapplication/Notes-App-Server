@@ -8,6 +8,7 @@ import { pyqController } from "./controllers/pyq_controller";
 import { pyqUploadController } from "./controllers/pyq_upload_controller";
 import { placementController } from "./controllers/placement_controller";
 import { placementUploadController } from "./controllers/placement_upload_controller";
+import { subscriptionController } from "./controllers/subscription_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
@@ -38,6 +39,7 @@ const app = new Elysia()
   .use(pyqUploadController)
   .use(placementController)
   .use(placementUploadController)
+  .use(subscriptionController)
 
   .listen({
     port: 3000,
