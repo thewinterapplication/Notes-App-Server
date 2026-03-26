@@ -29,6 +29,13 @@ const app = new Elysia()
   .get("/api/hello", () => ({ message: "Hello from Elysia!" }))
   .get("/test", () => Bun.file("test.html"))
   .get("/privacy-policy", () => Bun.file("privacy-policy.html"))
+  .get("/terms-and-conditions", () => Bun.file("terms-and-conditions.html"))
+  .get("/shipping-policy", () => Bun.file("shipping-policy.html"))
+  .get("/contact-us", () => Bun.file("contact-us.html"))
+  .get(
+    "/cancellation-and-refunds",
+    () => Bun.file("cancellation-and-refunds.html")
+  )
 
   // Register Controllers
   .use(uploadController)

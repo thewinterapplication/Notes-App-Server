@@ -159,6 +159,24 @@ const ensureRazorpayConfig = () => {
     if (!config.razorpay.keyId || !config.razorpay.keySecret) {
         throw new RazorpayConfigError("Razorpay is not configured on the backend.");
     }
+
+    if (
+        config.razorpay.testMode &&
+        config.razorpay.keyId.startsWith("rzp_live_")
+    ) {
+        throw new RazorpayConfigError(
+            "Razorpay test mode is enabled but a live key is configured."
+        );
+    }
+
+    if (
+        !config.razorpay.testMode &&
+        config.razorpay.keyId.startsWith("rzp_test_")
+    ) {
+        throw new RazorpayConfigError(
+            "Razorpay live mode is enabled but a test key is configured."
+        );
+    }
 };
 
 const buildAuthHeader = () =>
@@ -648,6 +666,7 @@ export const buildUserSubscriptionState = (args: {
 
 export const buildPublicSubscriptionConfig = () => ({
     keyId: config.razorpay.keyId,
+    testMode: config.razorpay.testMode,
     brandName: config.razorpay.brandName,
     themeColor: config.razorpay.themeColor
 });

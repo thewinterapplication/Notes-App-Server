@@ -3,6 +3,7 @@ const TWOFACTOR_API_KEY = process.env.TWOFACTOR_API_KEY || "";
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+const RAZORPAY_TEST_MODE = process.env.RAZORPAY_TEST_MODE !== "false";
 const RAZORPAY_BRAND_NAME = process.env.RAZORPAY_BRAND_NAME || "College Notes";
 const RAZORPAY_THEME_COLOR = process.env.RAZORPAY_THEME_COLOR || "#FF6A3D";
 
@@ -35,6 +36,7 @@ export const config = {
         keyId: RAZORPAY_KEY_ID,
         keySecret: RAZORPAY_KEY_SECRET,
         webhookSecret: RAZORPAY_WEBHOOK_SECRET,
+        testMode: RAZORPAY_TEST_MODE,
         brandName: RAZORPAY_BRAND_NAME,
         themeColor: RAZORPAY_THEME_COLOR
     }
