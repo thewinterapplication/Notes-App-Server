@@ -80,18 +80,59 @@ export const createDefaultUserSubscription = (): IUserSubscription => ({
     updatedAt: null
 });
 
+const toPlainUserSubscription = (
+    subscription?: Partial<IUserSubscription> | null
+): Partial<IUserSubscription> | null => {
+    if (!subscription) {
+        return null;
+    }
+
+    const maybeDocument = subscription as Partial<IUserSubscription> & {
+        toObject?: (options?: Record<string, unknown>) => unknown;
+        _doc?: unknown;
+    };
+
+    if (typeof maybeDocument.toObject === "function") {
+        const plain = maybeDocument.toObject({
+            depopulate: true,
+            flattenMaps: true,
+            getters: false,
+            virtuals: false,
+            versionKey: false,
+            transform: (_doc: unknown, ret: unknown) => ret
+        });
+
+        if (plain && typeof plain === "object" && !Array.isArray(plain)) {
+            return plain as Partial<IUserSubscription>;
+        }
+    }
+
+    if (
+        maybeDocument._doc &&
+        typeof maybeDocument._doc === "object" &&
+        !Array.isArray(maybeDocument._doc)
+    ) {
+        return maybeDocument._doc as Partial<IUserSubscription>;
+    }
+
+    return subscription;
+};
+
 export const normalizeUserSubscription = (
     subscription?: Partial<IUserSubscription> | null
 ): IUserSubscription => {
     const defaults = createDefaultUserSubscription();
+    const resolvedSubscription = toPlainUserSubscription(subscription);
 
     return {
         ...defaults,
-        ...subscription,
-        notes: subscription?.notes ?? defaults.notes,
-        paidCount: subscription?.paidCount ?? defaults.paidCount,
-        customerNotify: subscription?.customerNotify ?? defaults.customerNotify,
-        cancelAtCycleEnd: subscription?.cancelAtCycleEnd ?? defaults.cancelAtCycleEnd
+        ...resolvedSubscription,
+        notes: resolvedSubscription?.notes ?? defaults.notes,
+        paidCount: resolvedSubscription?.paidCount ?? defaults.paidCount,
+        customerNotify:
+            resolvedSubscription?.customerNotify ?? defaults.customerNotify,
+        cancelAtCycleEnd:
+            resolvedSubscription?.cancelAtCycleEnd ?? defaults.cancelAtCycleEnd
     };
 };
 
