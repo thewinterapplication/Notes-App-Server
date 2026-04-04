@@ -5,14 +5,14 @@ export const uploadController = new Elysia({ prefix: "/upload" })
     .decorate('storage', new FileStorageService()) // Dependency injection style
     .get("/", () => Bun.file("upload.html"))
     .post("/", async ({ body, storage }) => {
-        const { file, course, subject, customFileName } = body;
+        const { file, course, subject, customFileName, accessType } = body;
 
         if (!file) {
             return { error: "No file uploaded" };
         }
 
         try {
-            const result = await storage.saveFile(file, { course, subject, customFileName });
+            const result = await storage.saveFile(file, { course, subject, customFileName, accessType });
             return result;
         } catch (error: any) {
             return { error: error.message || "Upload failed" };
@@ -22,6 +22,7 @@ export const uploadController = new Elysia({ prefix: "/upload" })
             file: t.File(),
             course: t.Optional(t.String()),
             subject: t.Optional(t.String()),
-            customFileName: t.Optional(t.String())
+            customFileName: t.Optional(t.String()),
+            accessType: t.Optional(t.Union([t.Literal("free"), t.Literal("premium")]))
         })
     });

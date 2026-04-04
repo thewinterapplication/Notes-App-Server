@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course-Subject Mappings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin: 0.5rem 0 1.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .course-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .course-tab {
+            padding: 0.5rem 1rem;
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .course-tab.has-delete {
+            padding-right: 0.55rem;
+        }
+
+        .course-tab-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .course-delete-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.1rem;
+            height: 1.1rem;
+            border-radius: 999px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .course-tab.has-delete:hover .course-delete-icon {
+            color: var(--danger);
+            background-color: rgba(239, 68, 68, 0.12);
+        }
+
+        .course-tab:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+
+        .course-tab.active {
+            background-color: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .course-add-tab {
+            min-width: 2.75rem;
+            padding-left: 0.85rem;
+            padding-right: 0.85rem;
+            border-style: dashed;
+            color: var(--primary);
+        }
+
+        .course-add-tab:hover {
+            background-color: rgba(99, 102, 241, 0.12);
+            color: var(--text);
+        }
+
+        .add-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .add-input {
+            flex: 1;
+            padding: 0.7rem 0.75rem;
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .add-input:focus {
+            border-color: var(--primary);
+        }
+
+        .add-btn {
+            padding: 0.7rem 1.2rem;
+            background-color: var(--primary);
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .add-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .subjects-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .subject-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background-color: rgba(30, 41, 59, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .subject-item:hover {
+            border-color: var(--text-muted);
+        }
+
+        .subject-name {
+            font-size: 0.95rem;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        .delete-btn:hover {
+            color: var(--danger);
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .subject-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/upload" class="back-link">&larr;</a>
+            <h1>Mappings</h1>
+        </div>
+        <p class="subtitle">Manage subjects for each course</p>
+
+        <div class="course-tabs" id="course-tabs"></div>
+
+        <div class="add-row">
+            <input type="text" id="subject-input" class="add-input" placeholder="Enter subject name">
+            <button id="add-btn" class="add-btn">Add</button>
+        </div>
+
+        <div id="subject-count" class="subject-count"></div>
+        <ul id="subjects-list" class="subjects-list"></ul>
+        <div id="empty-state" class="empty-state" style="display: none;">No subjects mapped yet</div>
+    </div>
+
+    <script>
+        const courseTabs = document.getElementById('course-tabs');
+        const subjectInput = document.getElementById('subject-input');
+        const addBtn = document.getElementById('add-btn');
+        const subjectsList = document.getElementById('subjects-list');
+        const emptyState = document.getElementById('empty-state');
+        const subjectCount = document.getElementById('subject-count');
+
+        const courseLabelMap = {
+            MECHANICAL: 'MECH'
+        };
+
+        let selectedCourse = null;
+        let availableMappings = [];
+
+        function getCourseLabel(course) {
+            return courseLabelMap[course] || course;
+        }
+
+        function getCourseMapping(course) {
+            return availableMappings.find(
+                (mapping) => mapping.course.toLowerCase() === course.toLowerCase()
+            );
+        }
+
+        function renderCourseTabs() {
+            courseTabs.innerHTML = '';
+
+            availableMappings.forEach((mapping) => {
+                const course = mapping.course;
+                const canDelete = (mapping.subjects || []).length === 0;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `course-tab${course === selectedCourse ? ' active' : ''}${canDelete ? ' has-delete' : ''}`;
+                button.dataset.course = course;
+                button.innerHTML = canDelete
+                    ? `<span class="course-tab-content"><span>${escapeHtml(getCourseLabel(course))}</span><span class="course-delete-icon" title="Delete course" aria-hidden="true">&times;</span></span>`
+                    : `<span class="course-tab-content"><span>${escapeHtml(getCourseLabel(course))}</span></span>`;
+                button.addEventListener('click', async (event) => {
+                    if (canDelete && event.target.closest('.course-delete-icon')) {
+                        await deleteCourse(course);
+                        return;
+                    }
+                    if (selectedCourse === course) return;
+                    selectedCourse = course;
+                    renderCourseTabs();
+                    loadSubjects();
+                });
+                courseTabs.appendChild(button);
+            });
+
+            const addCourseBtn = document.createElement('button');
+            addCourseBtn.type = 'button';
+            addCourseBtn.className = 'course-tab course-add-tab';
+            addCourseBtn.title = 'Add course';
+            addCourseBtn.setAttribute('aria-label', 'Add course');
+            addCourseBtn.textContent = '+';
+            addCourseBtn.addEventListener('click', addCourse);
+            courseTabs.appendChild(addCourseBtn);
+        }
+
+        async function loadCourses(preferredCourse = selectedCourse) {
+            try {
+                const res = await fetch('/api/mappings');
+                if (!res.ok) throw new Error('Failed to load courses');
+
+                const data = await res.json();
+                availableMappings = data.mappings || [];
+
+                if (availableMappings.length === 0) {
+                    selectedCourse = null;
+                    renderCourseTabs();
+                    renderSubjects([]);
+                    return;
+                }
+
+                const matchedCourse = availableMappings.find(
+                    (mapping) => preferredCourse && mapping.course.toLowerCase() === preferredCourse.toLowerCase()
+                );
+
+                selectedCourse = matchedCourse?.course || availableMappings[0].course;
+                renderCourseTabs();
+                await loadSubjects();
+            } catch (err) {
+                availableMappings = [];
+                selectedCourse = null;
+                renderCourseTabs();
+                renderSubjects([]);
+            }
+        }
+
+        // Load subjects for selected course
+        async function loadSubjects() {
+            if (!selectedCourse) {
+                renderSubjects([]);
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}`);
+                if (!res.ok) throw new Error('Failed to load subjects');
+                const data = await res.json();
+                renderSubjects(data.subjects || []);
+            } catch (err) {
+                renderSubjects([]);
+            }
+        }
+
+        // Render subjects list
+        function renderSubjects(subjects) {
+            subjects.sort();
+            subjectsList.innerHTML = '';
+
+            if (subjects.length === 0) {
+                emptyState.style.display = 'block';
+                subjectCount.textContent = '';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            subjectCount.textContent = `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}`;
+
+            subjects.forEach(subject => {
+                const li = document.createElement('li');
+                li.className = 'subject-item';
+                li.innerHTML = `
+                    <span class="subject-name">${escapeHtml(subject)}</span>
+                    <button class="delete-btn" title="Remove">&times;</button>
+                `;
+                li.querySelector('.delete-btn').addEventListener('click', () => deleteSubject(subject));
+                subjectsList.appendChild(li);
+            });
+        }
+
+        // Add subject
+        addBtn.addEventListener('click', addSubject);
+        subjectInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addSubject();
+        });
+
+        async function addCourse() {
+            const courseName = prompt('Enter new course name or code:');
+            if (!courseName) return;
+
+            const course = courseName.trim().replace(/\s+/g, ' ');
+            if (!course) return;
+
+            const existingCourse = availableMappings.find(
+                (item) => item.course.toLowerCase() === course.toLowerCase()
+            );
+            if (existingCourse) {
+                selectedCourse = existingCourse.course;
+                renderCourseTabs();
+                loadSubjects();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/mappings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.error || 'Failed to add course');
+                    return;
+                }
+
+                selectedCourse = data.course;
+                await loadCourses(data.course);
+            } catch (err) {
+                alert('Failed to add course');
+            }
+        }
+
+        async function deleteCourse(course) {
+            const mapping = getCourseMapping(course);
+            if (!mapping || (mapping.subjects || []).length > 0) return;
+            if (!confirm(`Delete "${course}"?`)) return;
+
+            try {
+                const res = await fetch(`/api/mappings/${encodeURIComponent(course)}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error('Failed to delete course');
+
+                if (selectedCourse && selectedCourse.toLowerCase() === course.toLowerCase()) {
+                    const remainingCourse = availableMappings.find(
+                        (item) => item.course.toLowerCase() !== course.toLowerCase()
+                    );
+                    selectedCourse = remainingCourse ? remainingCourse.course : null;
+                }
+
+                await loadCourses(selectedCourse);
+            } catch (err) {
+                alert('Failed to delete course');
+            }
+        }
+
+        async function addSubject() {
+            if (!selectedCourse) {
+                alert('Add a course first');
+                return;
+            }
+
+            const subject = subjectInput.value.trim();
+            if (!subject) return;
+
+            try {
+                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}/subjects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject })
+                });
+                const data = await res.json();
+                if (data.subjects) {
+                    const mapping = getCourseMapping(selectedCourse);
+                    if (mapping) {
+                        mapping.subjects = [...data.subjects];
+                        renderCourseTabs();
+                    }
+                    renderSubjects(data.subjects);
+                    subjectInput.value = '';
+                    subjectInput.focus();
+                }
+            } catch (err) {
+                alert('Failed to add subject');
+            }
+        }
+
+        // Delete subject
+        async function deleteSubject(subject) {
+            if (!confirm(`Remove "${subject}" from ${selectedCourse}?`)) return;
+
+            try {
+                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}/subjects/${encodeURIComponent(subject)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                const mapping = getCourseMapping(selectedCourse);
+                if (mapping) {
+                    mapping.subjects = [...(data.subjects || [])];
+                    renderCourseTabs();
+                }
+                renderSubjects(data.subjects || []);
+            } catch (err) {
+                alert('Failed to remove subject');
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial load
+        loadCourses();
+    </script>
+</body>
+
+</html>

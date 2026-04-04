@@ -13,7 +13,7 @@ const minioClient = new Client({
 });
 
 export class FileStorageService {
-    async saveFile(file: File, options?: { course?: string, subject?: string, customFileName?: string }) {
+    async saveFile(file: File, options?: { course?: string, subject?: string, customFileName?: string, accessType?: string }) {
         // Use custom name if provided, otherwise preserve original name but sanitizing it
         let finalFileName = file.name;
 
@@ -50,6 +50,7 @@ export class FileStorageService {
             course: options?.course || "uncategorized",
             subject: options?.subject || "uncategorized",
             fileUrl: fileUrl,
+            accessType: options?.accessType || "free",
             likesCount: 0,
             viewCount: 0
         });

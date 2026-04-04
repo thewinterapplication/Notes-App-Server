@@ -220,6 +220,52 @@
             border-color: var(--primary);
             color: var(--primary);
         }
+
+        .toggle-group {
+            display: flex;
+            gap: 0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.65rem 1rem;
+            background-color: rgba(30, 41, 59, 0.5);
+            border: none;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn:first-child {
+            border-right: 1px solid var(--border);
+        }
+
+        .toggle-btn.active[data-value="free"] {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .toggle-btn.active[data-value="premium"] {
+            background-color: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background-color: rgba(99, 102, 241, 0.05);
+            color: var(--text);
+        }
+
+        .toggle-hint {
+            margin: 0.4rem 0 0 0;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 
@@ -228,6 +274,7 @@
     <div class="container">
         <h1>Upload PDF</h1>
         <p class="subtitle">Securely save your documents to storage</p>
+        <a href="/mappings" style="color: var(--primary); font-size: 0.85rem; text-decoration: none; display: inline-block; margin-bottom: 1rem;">Manage Mappings &rarr;</a>
 
         <div class="upload-area" id="drop-zone">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -252,12 +299,7 @@
             <label class="form-label" for="course-select">Course</label>
             <div class="input-row">
                 <select id="course-select" class="input-field">
-                    <option value="" disabled selected>Select Course</option>
-                    <option value="CSE">CSE - Computer Science and Engineering</option>
-                    <option value="ECE">ECE - Electronics and Communication Engineering</option>
-                    <option value="EEE">EEE - Electrical and Electronics Engineering</option>
-                    <option value="CIVIL">CIVIL - Civil Engineering</option>
-                    <option value="MECHANICAL">MECHANICAL - Mechanical Engineering</option>
+                    <option value="" disabled selected>Loading courses...</option>
                 </select>
             </div>
         </div>
@@ -270,6 +312,15 @@
                 </select>
                 <button type="button" id="new-subject-btn" class="btn-small">New</button>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Access Type</label>
+            <div class="toggle-group">
+                <button type="button" class="toggle-btn active" data-value="free" id="toggle-free">Free</button>
+                <button type="button" class="toggle-btn" data-value="premium" id="toggle-premium">Premium</button>
+            </div>
+            <p class="toggle-hint" id="access-hint">Anyone can read this file</p>
         </div>
 
         <button id="upload-btn" class="btn" disabled>Upload File</button>
@@ -338,6 +389,22 @@
             uploadBtn.textContent = 'Upload File';
         }
 
+        let accessType = 'free';
+
+        document.getElementById('toggle-free').addEventListener('click', () => {
+            accessType = 'free';
+            document.getElementById('toggle-free').classList.add('active');
+            document.getElementById('toggle-premium').classList.remove('active');
+            document.getElementById('access-hint').textContent = 'Anyone can read this file';
+        });
+
+        document.getElementById('toggle-premium').addEventListener('click', () => {
+            accessType = 'premium';
+            document.getElementById('toggle-premium').classList.add('active');
+            document.getElementById('toggle-free').classList.remove('active');
+            document.getElementById('access-hint').textContent = 'Only premium members can read this file';
+        });
+
         uploadBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
 
@@ -350,6 +417,7 @@
 
             const formData = new FormData();
             formData.append('file', selectedFile);
+            formData.append('accessType', accessType);
 
             if (courseSelect.value) {
                 formData.append('course', courseSelect.value);
@@ -394,6 +462,89 @@
         // Separate script for UI logic to keep things clean
         const newSubjectBtn = document.getElementById('new-subject-btn');
         const subjectSelect = document.getElementById('subject-select');
+        const courseSelectEl = document.getElementById('course-select');
+        const courseLabelMap = {
+            CSE: 'CSE - Computer Science and Engineering',
+            ECE: 'ECE - Electronics and Communication Engineering',
+            EEE: 'EEE - Electrical and Electronics Engineering',
+            CIVIL: 'CIVIL - Civil Engineering',
+            MECHANICAL: 'MECHANICAL - Mechanical Engineering'
+        };
+
+        function getCourseLabel(course) {
+            return courseLabelMap[course] || course;
+        }
+
+        function populateCourseOptions(courses) {
+            const uniqueCourses = [];
+            const seenCourses = new Set();
+
+            courses.forEach((course) => {
+                const trimmedCourse = (course || '').trim();
+                if (!trimmedCourse) return;
+
+                const key = trimmedCourse.toLowerCase();
+                if (seenCourses.has(key)) return;
+
+                seenCourses.add(key);
+                uniqueCourses.push(trimmedCourse);
+            });
+
+            courseSelectEl.innerHTML = '';
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = uniqueCourses.length > 0 ? 'Select Course' : 'No courses available';
+            courseSelectEl.add(placeholder);
+
+            uniqueCourses.forEach((course) => {
+                const option = document.createElement('option');
+                option.value = course;
+                option.textContent = getCourseLabel(course);
+                courseSelectEl.add(option);
+            });
+
+            subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+        }
+
+        async function loadCourses() {
+            courseSelectEl.innerHTML = '<option value="" disabled selected>Loading courses...</option>';
+
+            try {
+                const response = await fetch('/api/mappings');
+                if (!response.ok) throw new Error('Failed to load courses');
+
+                const data = await response.json();
+                populateCourseOptions((data.mappings || []).map((mapping) => mapping.course));
+            } catch (error) {
+                populateCourseOptions(Object.keys(courseLabelMap));
+            }
+        }
+
+        // Load subjects from mappings API when course changes
+        courseSelectEl.addEventListener('change', async () => {
+            const course = courseSelectEl.value;
+            subjectSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+
+            try {
+                const response = await fetch(`/api/mappings/${encodeURIComponent(course)}`);
+                const data = await response.json();
+                subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+
+                if (data.subjects && data.subjects.length > 0) {
+                    data.subjects.sort().forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject;
+                        option.textContent = subject;
+                        subjectSelect.add(option);
+                    });
+                }
+            } catch (error) {
+                subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+            }
+        });
 
         newSubjectBtn.addEventListener('click', () => {
             const newSubject = prompt("Enter new subject name:");
@@ -419,6 +570,8 @@
                 }
             }
         });
+
+        loadCourses();
     </script>
 </body>
 
