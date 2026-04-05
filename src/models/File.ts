@@ -4,6 +4,7 @@ export interface IFileDocument extends Document {
     fileName: string;
     course: string;
     subject: string;
+    author: string;
     fileUrl: string;
     accessType: "free" | "premium";
     likesCount: number;
@@ -16,6 +17,7 @@ const FileSchema: Schema = new Schema(
         fileName: { type: String, required: true },
         course: { type: String, default: "uncategorized" },
         subject: { type: String, default: "uncategorized" },
+        author: { type: String, default: "Unknown author" },
         fileUrl: { type: String, required: true },
         accessType: { type: String, enum: ["free", "premium"], default: "free" },
         likesCount: { type: Number, default: 0 },

@@ -54,6 +54,25 @@
             font-size: 0.9rem;
         }
 
+        .quick-links {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .quick-link {
+            color: var(--primary);
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .quick-link:hover {
+            text-decoration: underline;
+        }
+
         .upload-area {
             border: 2px dashed var(--border);
             border-radius: 0.75rem;
@@ -204,23 +223,6 @@
             border-color: var(--primary);
         }
 
-        .btn-small {
-            padding: 0.75rem 1rem;
-            background-color: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 0.5rem;
-            cursor: pointer;
-            white-space: nowrap;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-small:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
         .toggle-group {
             display: flex;
             gap: 0;
@@ -274,7 +276,10 @@
     <div class="container">
         <h1>Upload PDF</h1>
         <p class="subtitle">Securely save your documents to storage</p>
-        <a href="/mappings" style="color: var(--primary); font-size: 0.85rem; text-decoration: none; display: inline-block; margin-bottom: 1rem;">Manage Mappings &rarr;</a>
+        <div class="quick-links">
+            <a href="/mappings" class="quick-link">Manage Mappings &rarr;</a>
+            <a href="/documents" class="quick-link">View Uploaded Docs &rarr;</a>
+        </div>
 
         <div class="upload-area" id="drop-zone">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -296,6 +301,11 @@
         </div>
 
         <div class="form-group">
+            <label class="form-label" for="author-name">Author Name</label>
+            <input type="text" id="author-name" class="input-field" placeholder="Enter author name">
+        </div>
+
+        <div class="form-group">
             <label class="form-label" for="course-select">Course</label>
             <div class="input-row">
                 <select id="course-select" class="input-field">
@@ -310,7 +320,6 @@
                 <select id="subject-select" class="input-field">
                     <option value="" disabled selected>Select Subject</option>
                 </select>
-                <button type="button" id="new-subject-btn" class="btn-small">New</button>
             </div>
         </div>
 
@@ -414,6 +423,7 @@
             const courseSelect = document.getElementById('course-select');
             const subjectSelect = document.getElementById('subject-select');
             const customFileNameInput = document.getElementById('custom-filename');
+            const authorNameInput = document.getElementById('author-name');
 
             const formData = new FormData();
             formData.append('file', selectedFile);
@@ -429,6 +439,10 @@
 
             if (customFileNameInput.value.trim()) {
                 formData.append('customFileName', customFileNameInput.value.trim());
+            }
+
+            if (authorNameInput.value.trim()) {
+                formData.append('author', authorNameInput.value.trim());
             }
 
             try {
@@ -460,7 +474,6 @@
 
     <script>
         // Separate script for UI logic to keep things clean
-        const newSubjectBtn = document.getElementById('new-subject-btn');
         const subjectSelect = document.getElementById('subject-select');
         const courseSelectEl = document.getElementById('course-select');
         const courseLabelMap = {
@@ -543,31 +556,6 @@
                 }
             } catch (error) {
                 subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
-            }
-        });
-
-        newSubjectBtn.addEventListener('click', () => {
-            const newSubject = prompt("Enter new subject name:");
-            if (newSubject && newSubject.trim() !== "") {
-                const trimmedSubject = newSubject.trim();
-
-                // Check if already exists
-                let exists = false;
-                for (let i = 0; i < subjectSelect.options.length; i++) {
-                    if (subjectSelect.options[i].value === trimmedSubject) {
-                        exists = true;
-                        subjectSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-
-                if (!exists) {
-                    const option = document.createElement("option");
-                    option.text = trimmedSubject;
-                    option.value = trimmedSubject;
-                    subjectSelect.add(option);
-                    subjectSelect.selectedIndex = subjectSelect.options.length - 1;
-                }
             }
         });
 

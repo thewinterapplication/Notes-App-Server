@@ -10,6 +10,7 @@ import { placementController } from "./controllers/placement_controller";
 import { placementUploadController } from "./controllers/placement_upload_controller";
 import { subscriptionController } from "./controllers/subscription_controller";
 import { mappingController } from "./controllers/mapping_controller";
+import { documentController } from "./controllers/document_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
@@ -49,6 +50,7 @@ const app = new Elysia()
   .use(placementUploadController)
   .use(subscriptionController)
   .use(mappingController)
+  .use(documentController)
 
   .listen({
     port: 3000,

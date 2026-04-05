@@ -3,6 +3,7 @@ import { FileStorageService } from "../services/file_storage";
 import { FileModel } from "../models/File";
 import { UserModel } from "../models/User";
 import { hasSubscriptionEntitlement } from "../utils/subscription_access";
+import { config } from "../config";
 
 export const fileController = new Elysia()
     .decorate('fileService', new FileStorageService())
@@ -31,6 +32,11 @@ export const fileController = new Elysia()
     // Stream file from MinIO
     .get("/files/:name", async ({ params, query, headers, set, fileService }) => {
         try {
+            const storageKey = decodeURIComponent(params.name);
+            const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(storageKey)}`;
+            const file = await FileModel.findOne({ fileUrl }).select("accessType").lean();
+            const isFreeFile = file?.accessType === "free";
+
             const phoneHeader = headers["x-user-phone"];
             const phone =
                 typeof phoneHeader === "string" && phoneHeader.trim().length > 0
@@ -39,34 +45,35 @@ export const fileController = new Elysia()
                         ? query.phone.trim()
                         : "";
 
-            if (!phone) {
+            if (!isFreeFile && !phone) {
                 set.status = 401;
                 return {
                     success: false,
-                    message: "Login and an active subscription are required to open this PDF."
+                    message: "Login is required to open this premium PDF."
                 };
             }
 
-            const user = await UserModel.findOne({ phone });
+            if (!isFreeFile) {
+                const user = await UserModel.findOne({ phone });
 
-            if (!user) {
-                set.status = 401;
-                return {
-                    success: false,
-                    message: "User not found. Please log in again."
-                };
+                if (!user) {
+                    set.status = 401;
+                    return {
+                        success: false,
+                        message: "User not found. Please log in again."
+                    };
+                }
+
+                if (!hasSubscriptionEntitlement(user.subscription)) {
+                    set.status = 403;
+                    return {
+                        success: false,
+                        message: "An active subscription is required to open this premium PDF."
+                    };
+                }
             }
 
-            if (!hasSubscriptionEntitlement(user.subscription)) {
-                set.status = 403;
-                return {
-                    success: false,
-                    message: "An active subscription is required to open this PDF."
-                };
-            }
-
-            const fileName = params.name;
-            const stream = await fileService.getFileStream(fileName);
+            const stream = await fileService.getFileStream(storageKey);
             set.headers["Content-Type"] = "application/pdf";
             return stream;
         } catch (error: any) {

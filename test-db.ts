@@ -1,11 +1,13 @@
 import mongoose from "mongoose";
 
-const MONGO_URI = process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI;
 
-if (!MONGO_URI) {
+if (!mongoUri) {
     console.error("No MONGO_URI found");
     process.exit(1);
 }
+
+const MONGO_URI = mongoUri;
 
 console.log(`Testing connection to: ${MONGO_URI.replace(/:([^:@]+)@/, ":****@")}`);
 
