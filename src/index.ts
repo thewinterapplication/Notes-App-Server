@@ -11,12 +11,14 @@ import { placementUploadController } from "./controllers/placement_upload_contro
 import { subscriptionController } from "./controllers/subscription_controller";
 import { mappingController } from "./controllers/mapping_controller";
 import { documentController } from "./controllers/document_controller";
+import { jobController } from "./controllers/job_controller";
+import { upskillController } from "./controllers/upskill_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
 const keepAliveJob = new CronJob("*/12 * * * *", async () => {
   try {
-    await fetch("https://notes-app-server-wczw.onrender.com");
+    await fetch("https://notes.codebinary.com");
   } catch (error) {
     // Silent fail
   }
@@ -51,6 +53,8 @@ const app = new Elysia()
   .use(subscriptionController)
   .use(mappingController)
   .use(documentController)
+  .use(jobController)
+  .use(upskillController)
 
   .listen({
     port: 3000,

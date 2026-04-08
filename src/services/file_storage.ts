@@ -1,8 +1,10 @@
 import { Client } from "minio";
 import { config } from "../config";
 import { FileModel } from "../models/File";
+import { JobModel } from "../models/Job";
 import { PyqModel } from "../models/Pyq";
 import { PlacementModel } from "../models/Placement";
+import { UpskillModel } from "../models/Upskill";
 
 const minioClient = new Client({
     endPoint: config.minio.endPoint,
@@ -150,6 +152,68 @@ export class FileStorageService {
             url: fileUrl,
             fileName: uniqueFileName,
             id: placementDoc._id
+        };
+    }
+
+    async saveJobPosting(file: File, options: { jobName: string, jobUrl: string }) {
+        const sanitizedFileName = file.name.replace(/\s+/g, "_");
+        const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        await minioClient.putObject(
+            config.minio.bucket,
+            uniqueFileName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': file.type }
+        );
+
+        const imageUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+
+        const jobDoc = await JobModel.create({
+            jobName: options.jobName.trim(),
+            jobUrl: options.jobUrl.trim(),
+            imageUrl
+        });
+
+        return {
+            id: jobDoc._id,
+            jobName: jobDoc.jobName,
+            jobUrl: jobDoc.jobUrl,
+            imageUrl
+        };
+    }
+
+    async saveUpskillPosting(file: File, options: { upskillName: string, upskillUrl: string }) {
+        const sanitizedFileName = file.name.replace(/\s+/g, "_");
+        const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        await minioClient.putObject(
+            config.minio.bucket,
+            uniqueFileName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': file.type }
+        );
+
+        const imageUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+
+        const upskillDoc = await UpskillModel.create({
+            upskillName: options.upskillName.trim(),
+            upskillUrl: options.upskillUrl.trim(),
+            imageUrl
+        });
+
+        return {
+            id: upskillDoc._id,
+            upskillName: upskillDoc.upskillName,
+            upskillUrl: upskillDoc.upskillUrl,
+            imageUrl
         };
     }
 

@@ -1,6 +1,8 @@
 import { Elysia } from "elysia";
 import { FileStorageService } from "../services/file_storage";
 import { FileModel } from "../models/File";
+import { JobModel } from "../models/Job";
+import { UpskillModel } from "../models/Upskill";
 import { UserModel } from "../models/User";
 import { hasSubscriptionEntitlement } from "../utils/subscription_access";
 import { config } from "../config";
@@ -33,8 +35,27 @@ export const fileController = new Elysia()
     .get("/files/:name", async ({ params, query, headers, set, fileService }) => {
         try {
             const storageKey = decodeURIComponent(params.name);
-            const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(storageKey)}`;
-            const file = await FileModel.findOne({ fileUrl }).select("accessType").lean();
+            const encodedKey = encodeURIComponent(storageKey);
+            const suffixPattern = new RegExp(encodedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
+
+            const [file, job, upskill] = await Promise.all([
+                FileModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
+                JobModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
+                UpskillModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
+            ]);
+
+            // Job and upskill images are always public
+            if (job || upskill) {
+                const stream = await fileService.getFileStream(storageKey);
+                const ext = storageKey.split('.').pop()?.toLowerCase() || '';
+                const contentTypes: Record<string, string> = {
+                    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                    webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml',
+                };
+                set.headers["Content-Type"] = contentTypes[ext] || "application/octet-stream";
+                return stream;
+            }
+
             const isFreeFile = file?.accessType === "free";
 
             const phoneHeader = headers["x-user-phone"];

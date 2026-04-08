@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Upskill - Elysia Storage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            margin: 0 0 1.5rem 0;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.45rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.85rem 0.9rem;
+            background-color: rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-field:focus {
+            border-color: var(--primary);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 0.9rem;
+            padding: 1.5rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .helper-text {
+            margin: 0.45rem 0 0 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .file-name {
+            margin-top: 0.9rem;
+            color: var(--text);
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
+
+        .preview-wrap {
+            display: none;
+            margin-top: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.9rem;
+            overflow: hidden;
+            background-color: rgba(15, 23, 42, 0.4);
+        }
+
+        .preview-image {
+            display: block;
+            width: 100%;
+            max-height: 260px;
+            object-fit: cover;
+        }
+
+        .btn {
+            width: 100%;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.9rem 1rem;
+            background-color: var(--primary);
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            background-color: var(--border);
+            color: var(--text-muted);
+        }
+
+        .status {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.85rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            background-color: rgba(127, 29, 29, 0.18);
+            color: #fecaca;
+            font-size: 0.9rem;
+        }
+
+        .result {
+            display: none;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .result-card {
+            padding: 1rem;
+            border-radius: 0.9rem;
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .result-title {
+            margin: 0 0 0.5rem 0;
+            color: var(--success);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .result-meta {
+            margin: 0.3rem 0;
+            color: var(--text);
+            font-size: 0.92rem;
+            word-break: break-word;
+        }
+
+        .result-link {
+            color: #86efac;
+            text-decoration: none;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/upload" class="back-link">&larr; Back to upload</a>
+        </div>
+        <h1>Upskill Upload</h1>
+        <p class="subtitle">Create an upskill card with a name, external URL, and image.</p>
+
+        <form id="upskills-form">
+            <div class="form-group">
+                <label class="form-label" for="upskill-name">Upskill Name</label>
+                <input type="text" id="upskill-name" class="input-field" placeholder="Enter upskill name" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="upskill-url">Enter URL</label>
+                <input type="url" id="upskill-url" class="input-field" placeholder="https://example.com/upskill" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Upload Image</label>
+                <div class="upload-area" id="drop-zone">
+                    <strong style="display:block; margin-bottom: 0.35rem;">Drop image here</strong>
+                    <span style="color: var(--primary); font-weight: 600;">Browse image</span>
+                    <p class="helper-text">PNG, JPG, WEBP, GIF, or SVG</p>
+                    <input type="file" id="image-input" class="file-input" accept="image/*">
+                </div>
+                <div id="file-name" class="file-name"></div>
+                <div id="preview-wrap" class="preview-wrap">
+                    <img id="preview-image" class="preview-image" alt="Selected image preview">
+                </div>
+            </div>
+
+            <button id="submit-btn" type="submit" class="btn" disabled>Create Upskill</button>
+            <div id="status" class="status"></div>
+        </form>
+
+        <div id="result" class="result">
+            <div class="result-card">
+                <p class="result-title">Upskill created</p>
+                <p class="result-meta" id="result-name"></p>
+                <p class="result-meta"><a id="result-url" class="result-link" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+                <p class="result-meta"><a id="result-image" class="result-link" href="#" target="_blank" rel="noopener noreferrer">Open uploaded image</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('upskills-form');
+        const upskillNameInput = document.getElementById('upskill-name');
+        const upskillUrlInput = document.getElementById('upskill-url');
+        const imageInput = document.getElementById('image-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileName = document.getElementById('file-name');
+        const previewWrap = document.getElementById('preview-wrap');
+        const previewImage = document.getElementById('preview-image');
+        const submitBtn = document.getElementById('submit-btn');
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+        const resultName = document.getElementById('result-name');
+        const resultUrl = document.getElementById('result-url');
+        const resultImage = document.getElementById('result-image');
+
+        let selectedImage = null;
+
+        function setStatus(message = '') {
+            status.textContent = message;
+            status.style.display = message ? 'block' : 'none';
+        }
+
+        function resetFormAfterSuccess() {
+            form.reset();
+            selectedImage = null;
+            fileName.textContent = '';
+            previewImage.removeAttribute('src');
+            previewWrap.style.display = 'none';
+            submitBtn.textContent = 'Create Upskill';
+            updateSubmitState();
+        }
+
+        function updateSubmitState() {
+            submitBtn.disabled = !upskillNameInput.value.trim() || !upskillUrlInput.value.trim() || !selectedImage;
+        }
+
+        function handleImage(file) {
+            if (!file || !(file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name))) {
+                setStatus('Please choose a valid image file.');
+                return;
+            }
+
+            selectedImage = file;
+            fileName.textContent = file.name;
+            previewImage.src = URL.createObjectURL(file);
+            previewWrap.style.display = 'block';
+            result.style.display = 'none';
+            setStatus('');
+            updateSubmitState();
+        }
+
+        dropZone.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', (event) => {
+            if (event.target.files.length > 0) {
+                handleImage(event.target.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (event.dataTransfer.files.length > 0) {
+                handleImage(event.dataTransfer.files[0]);
+            }
+        });
+
+        upskillNameInput.addEventListener('input', updateSubmitState);
+        upskillUrlInput.addEventListener('input', updateSubmitState);
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!selectedImage) {
+                setStatus('Please upload an image first.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+            setStatus('');
+
+            const formData = new FormData();
+            formData.append('upskillName', upskillNameInput.value.trim());
+            formData.append('upskillUrl', upskillUrlInput.value.trim());
+            formData.append('image', selectedImage);
+
+            try {
+                const response = await fetch('/upload/upskills', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create upskill');
+                }
+
+                resultName.textContent = `Name: ${data.upskillName}`;
+                resultUrl.href = data.upskillUrl;
+                resultUrl.textContent = data.upskillUrl;
+                resultImage.href = data.imageUrl;
+                result.style.display = 'block';
+                resetFormAfterSuccess();
+            } catch (error) {
+                setStatus(error.message || 'Failed to create upskill');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Upskill';
+                return;
+            }
+        });
+    </script>
+</body>
+
+</html>
