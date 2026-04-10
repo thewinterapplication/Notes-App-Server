@@ -1,14 +1,15 @@
 import { Elysia } from "elysia";
 import { FileStorageService } from "../services/file_storage";
 import { PlacementModel } from "../models/Placement";
+import { getPlacementMappingForCourse } from "../services/mapping_service";
 
 export const placementController = new Elysia()
     .decorate('fileService', new FileStorageService())
 
     // Get distinct subjects for a course (Placements)
     .get("/api/placements/courses/:course/subjects", async ({ params }) => {
-        const subjects = await PlacementModel.distinct("subject", { course: params.course });
-        return { subjects: subjects.filter(s => s && s !== "uncategorized") };
+        const mapping = await getPlacementMappingForCourse(params.course);
+        return { subjects: mapping.subjects };
     })
 
     // Get placement files by course and subject

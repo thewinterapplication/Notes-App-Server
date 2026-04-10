@@ -249,6 +249,10 @@
             margin-bottom: 1rem;
         }
 
+        .form-group.hidden {
+            display: none;
+        }
+
         .form-label {
             display: block;
             margin-bottom: 0.5rem;
@@ -353,20 +357,15 @@
 <body>
 
     <div class="container">
-        <h1>Upload PDF</h1>
-        <p class="subtitle">Securely save your documents to storage</p>
-        <div class="quick-links">
-            <a href="/mappings" class="quick-link">Manage Mappings &rarr;</a>
-            <a href="/documents" class="quick-link">View Uploaded Docs &rarr;</a>
-            <a href="/upload/jobs" class="quick-link">Jobs Upload &rarr;</a>
-            <a href="/upload/upskills" class="quick-link">Upskill Upload &rarr;</a>
-        </div>
+        <h1 id="page-title">Upload PDF</h1>
+        <p id="page-subtitle" class="subtitle">Securely save your documents to storage</p>
 
         <div class="nav-panels">
             <div class="nav-panel">
                 <p class="nav-panel-title">Upload Tabs</p>
                 <div class="tab-links">
-                    <a href="/upload" class="tab-link active">Notes</a>
+                    <a href="/upload" class="tab-link" id="notes-upload-tab">Notes</a>
+                    <a href="/upload-placement" class="tab-link" id="placements-upload-tab">Placements</a>
                     <a href="/upload/jobs" class="tab-link">Jobs</a>
                     <a href="/upload/upskills" class="tab-link">Upskill</a>
                 </div>
@@ -375,7 +374,8 @@
             <div class="nav-panel">
                 <p class="nav-panel-title">View Uploaded</p>
                 <div class="tab-links">
-                    <a href="/documents" class="tab-link">Documents</a>
+                    <a href="/documents" class="tab-link">Notes</a>
+                    <a href="/placements" class="tab-link">Placements</a>
                     <a href="/jobs" class="tab-link">Jobs</a>
                     <a href="/upskills" class="tab-link">Upskills</a>
                 </div>
@@ -401,7 +401,7 @@
             <input type="text" id="custom-filename" class="input-field" placeholder="Enter custom file name">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="author-group">
             <label class="form-label" for="author-name">Author Name</label>
             <input type="text" id="author-name" class="input-field" placeholder="Enter author name">
         </div>
@@ -424,7 +424,7 @@
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="access-type-group">
             <label class="form-label">Access Type</label>
             <div class="toggle-group">
                 <button type="button" class="toggle-btn active" data-value="free" id="toggle-free">Free</button>
@@ -441,8 +441,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round"
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 style="margin: 0.5rem 0; font-size: 1.1rem; color: var(--success);">Upload Complete!</h3>
-            <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Your file is ready.</p>
+            <h3 id="result-title" style="margin: 0.5rem 0; font-size: 1.1rem; color: var(--success);">Upload Complete!</h3>
+            <p id="result-subtitle" style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Your file is ready.</p>
 
             <div class="link-box">
                 <a href="#" target="_blank" id="pdf-link" class="generated-link">View PDF</a>
@@ -452,8 +452,9 @@
         <footer class="page-footer">
             <p class="footer-title">Quick Access</p>
             <div class="footer-links">
-                <a href="/mappings" class="quick-link">Mappings</a>
+                <a href="/mappings" class="quick-link" id="footer-mappings-link">Mappings</a>
                 <a href="/documents" class="quick-link">Documents</a>
+                <a href="/placements" class="quick-link">Placements</a>
                 <a href="/upload/jobs" class="quick-link">Jobs</a>
                 <a href="/upload/upskills" class="quick-link">Upskill</a>
             </div>
@@ -461,14 +462,76 @@
     </div>
 
     <script>
+        const routePath = window.location.pathname.replace(/\/+$/, '') || '/upload';
+        const routeConfig = {
+            '/upload': {
+                mode: 'notes',
+                title: 'Upload PDF',
+                subtitle: 'Securely save your documents to storage',
+                uploadUrl: '/upload',
+                mappingsApiBase: '/api/mappings',
+                mappingsPageHref: '/mappings',
+                mappingsPageLabel: 'Manage Mappings',
+                footerMappingsLabel: 'Mappings',
+                showAuthor: true,
+                showAccessType: true,
+            },
+            '/upload-placement': {
+                mode: 'placements',
+                title: 'Upload Placement PDF',
+                subtitle: 'Securely save placement PDFs to storage',
+                uploadUrl: '/upload-placement',
+                mappingsApiBase: '/api/placement-mappings',
+                mappingsPageHref: '/placement-mappings',
+                mappingsPageLabel: 'Manage Placement Mappings',
+                footerMappingsLabel: 'Placement Mappings',
+                showAuthor: true,
+                showAccessType: true,
+            },
+            '/upload-pyq': {
+                mode: 'pyq',
+                title: 'Upload PYQ PDF',
+                subtitle: 'Securely save previous year papers to storage',
+                uploadUrl: '/upload-pyq',
+                mappingsApiBase: '/api/mappings',
+                mappingsPageHref: '/mappings',
+                mappingsPageLabel: 'Manage Mappings',
+                footerMappingsLabel: 'Mappings',
+                showAuthor: false,
+                showAccessType: false,
+            }
+        };
+        const currentConfig = routeConfig[routePath] || routeConfig['/upload'];
+
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const uploadBtn = document.getElementById('upload-btn');
         const fileNameDisplay = document.getElementById('file-name');
         const resultContainer = document.getElementById('result');
         const pdfLink = document.getElementById('pdf-link');
+        const pageTitle = document.getElementById('page-title');
+        const pageSubtitle = document.getElementById('page-subtitle');
+        const resultTitle = document.getElementById('result-title');
+        const resultSubtitle = document.getElementById('result-subtitle');
+        const authorGroup = document.getElementById('author-group');
+        const accessTypeGroup = document.getElementById('access-type-group');
+        const footerMappingsLink = document.getElementById('footer-mappings-link');
+        const notesUploadTab = document.getElementById('notes-upload-tab');
+        const placementsUploadTab = document.getElementById('placements-upload-tab');
 
         let selectedFile = null;
+
+        document.title = `${currentConfig.title} - Elysia Storage`;
+        pageTitle.textContent = currentConfig.title;
+        pageSubtitle.textContent = currentConfig.subtitle;
+        resultTitle.textContent = 'Upload Complete!';
+        resultSubtitle.textContent = 'Your file is ready.';
+        authorGroup.classList.toggle('hidden', !currentConfig.showAuthor);
+        accessTypeGroup.classList.toggle('hidden', !currentConfig.showAccessType);
+        footerMappingsLink.href = currentConfig.mappingsPageHref;
+        footerMappingsLink.textContent = currentConfig.footerMappingsLabel;
+        notesUploadTab.classList.toggle('active', currentConfig.mode === 'notes');
+        placementsUploadTab.classList.toggle('active', currentConfig.mode === 'placements');
 
         dropZone.addEventListener('click', () => fileInput.click());
 
@@ -538,7 +601,9 @@
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('accessType', accessType);
+            if (currentConfig.showAccessType) {
+                formData.append('accessType', accessType);
+            }
 
             if (courseSelect.value) {
                 formData.append('course', courseSelect.value);
@@ -552,24 +617,24 @@
                 formData.append('customFileName', customFileNameInput.value.trim());
             }
 
-            if (authorNameInput.value.trim()) {
+            if (currentConfig.showAuthor && authorNameInput.value.trim()) {
                 formData.append('author', authorNameInput.value.trim());
             }
 
             try {
-                const response = await fetch('/upload', {
+                const response = await fetch(currentConfig.uploadUrl, {
                     method: 'POST',
                     body: formData
                 });
+                const data = await response.json().catch(() => ({}));
 
                 if (response.ok) {
-                    const data = await response.json();
                     resultContainer.style.display = 'block';
                     pdfLink.href = data.url;
                     pdfLink.textContent = data.url;
                     uploadBtn.textContent = 'Uploaded';
                 } else {
-                    alert('Upload failed.');
+                    alert(data.error || 'Upload failed.');
                     uploadBtn.disabled = false;
                     uploadBtn.textContent = 'Upload File';
                 }
@@ -637,7 +702,7 @@
             courseSelectEl.innerHTML = '<option value="" disabled selected>Loading courses...</option>';
 
             try {
-                const response = await fetch('/api/mappings');
+                const response = await fetch(currentConfig.mappingsApiBase);
                 if (!response.ok) throw new Error('Failed to load courses');
 
                 const data = await response.json();
@@ -653,7 +718,7 @@
             subjectSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
 
             try {
-                const response = await fetch(`/api/mappings/${encodeURIComponent(course)}`);
+                const response = await fetch(`${currentConfig.mappingsApiBase}/${encodeURIComponent(course)}`);
                 const data = await response.json();
                 subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
 

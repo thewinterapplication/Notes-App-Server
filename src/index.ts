@@ -10,7 +10,9 @@ import { placementController } from "./controllers/placement_controller";
 import { placementUploadController } from "./controllers/placement_upload_controller";
 import { subscriptionController } from "./controllers/subscription_controller";
 import { mappingController } from "./controllers/mapping_controller";
+import { placementMappingController } from "./controllers/placement_mapping_controller";
 import { documentController } from "./controllers/document_controller";
+import { placementDocumentController } from "./controllers/placement_document_controller";
 import { jobController } from "./controllers/job_controller";
 import { upskillController } from "./controllers/upskill_controller";
 import { connectDB } from "./db";
@@ -52,7 +54,9 @@ const app = new Elysia()
   .use(placementUploadController)
   .use(subscriptionController)
   .use(mappingController)
+  .use(placementMappingController)
   .use(documentController)
+  .use(placementDocumentController)
   .use(jobController)
   .use(upskillController)
 

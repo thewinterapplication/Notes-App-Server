@@ -2,6 +2,8 @@ import { Elysia } from "elysia";
 import { FileStorageService } from "../services/file_storage";
 import { FileModel } from "../models/File";
 import { JobModel } from "../models/Job";
+import { PlacementModel } from "../models/Placement";
+import { PyqModel } from "../models/Pyq";
 import { UpskillModel } from "../models/Upskill";
 import { UserModel } from "../models/User";
 import { hasSubscriptionEntitlement } from "../utils/subscription_access";
@@ -38,8 +40,10 @@ export const fileController = new Elysia()
             const encodedKey = encodeURIComponent(storageKey);
             const suffixPattern = new RegExp(encodedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
 
-            const [file, job, upskill] = await Promise.all([
+            const [file, placement, pyq, job, upskill] = await Promise.all([
                 FileModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
+                PlacementModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
+                PyqModel.findOne({ fileUrl: suffixPattern }).select("_id").lean(),
                 JobModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
                 UpskillModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
             ]);
@@ -56,7 +60,23 @@ export const fileController = new Elysia()
                 return stream;
             }
 
-            const isFreeFile = file?.accessType === "free";
+            if (!file && !placement && !pyq) {
+                set.status = 404;
+                return { error: "File not found" };
+            }
+
+            if (pyq) {
+                const stream = await fileService.getFileStream(storageKey);
+                set.headers["Content-Type"] = "application/pdf";
+                return stream;
+            }
+
+            const resolvedAccessType = file
+                ? (file.accessType || "free")
+                : placement
+                    ? (placement.accessType || "free")
+                    : null;
+            const isFreeFile = resolvedAccessType === "free";
 
             const phoneHeader = headers["x-user-phone"];
             const phone =

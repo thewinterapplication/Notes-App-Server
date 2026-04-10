@@ -249,10 +249,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <a href="/upload" class="back-link">&larr;</a>
-            <h1>Mappings</h1>
+            <a href="/upload" class="back-link" id="back-link">&larr;</a>
+            <h1 id="page-title">Mappings</h1>
         </div>
-        <p class="subtitle">Manage subjects for each course</p>
+        <p class="subtitle" id="page-subtitle">Manage subjects for each course</p>
 
         <div class="course-tabs" id="course-tabs"></div>
 
@@ -267,12 +267,40 @@
     </div>
 
     <script>
+        const routePath = window.location.pathname.replace(/\/+$/, '') || '/mappings';
+        const pageConfig = routePath === '/placement-mappings'
+            ? {
+                title: 'Placement Mappings',
+                subtitle: 'Manage placement subjects for each course',
+                backHref: '/upload-placement',
+                apiBase: '/api/placement-mappings',
+                emptyState: 'No placement subjects mapped yet',
+                addCoursePrompt: 'Enter new placement course name or code:'
+            }
+            : {
+                title: 'Mappings',
+                subtitle: 'Manage subjects for each course',
+                backHref: '/upload',
+                apiBase: '/api/mappings',
+                emptyState: 'No subjects mapped yet',
+                addCoursePrompt: 'Enter new course name or code:'
+            };
+
         const courseTabs = document.getElementById('course-tabs');
         const subjectInput = document.getElementById('subject-input');
         const addBtn = document.getElementById('add-btn');
         const subjectsList = document.getElementById('subjects-list');
         const emptyState = document.getElementById('empty-state');
         const subjectCount = document.getElementById('subject-count');
+        const backLink = document.getElementById('back-link');
+        const pageTitle = document.getElementById('page-title');
+        const pageSubtitle = document.getElementById('page-subtitle');
+
+        document.title = pageConfig.title;
+        backLink.href = pageConfig.backHref;
+        pageTitle.textContent = pageConfig.title;
+        pageSubtitle.textContent = pageConfig.subtitle;
+        emptyState.textContent = pageConfig.emptyState;
 
         const courseLabelMap = {
             MECHANICAL: 'MECH'
@@ -329,7 +357,7 @@
 
         async function loadCourses(preferredCourse = selectedCourse) {
             try {
-                const res = await fetch('/api/mappings');
+                const res = await fetch(pageConfig.apiBase);
                 if (!res.ok) throw new Error('Failed to load courses');
 
                 const data = await res.json();
@@ -365,7 +393,7 @@
             }
 
             try {
-                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}`);
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}`);
                 if (!res.ok) throw new Error('Failed to load subjects');
                 const data = await res.json();
                 renderSubjects(data.subjects || []);
@@ -407,7 +435,7 @@
         });
 
         async function addCourse() {
-            const courseName = prompt('Enter new course name or code:');
+            const courseName = prompt(pageConfig.addCoursePrompt);
             if (!courseName) return;
 
             const course = courseName.trim().replace(/\s+/g, ' ');
@@ -424,7 +452,7 @@
             }
 
             try {
-                const res = await fetch('/api/mappings', {
+                const res = await fetch(pageConfig.apiBase, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ course })
@@ -449,7 +477,7 @@
             if (!confirm(`Delete "${course}"?`)) return;
 
             try {
-                const res = await fetch(`/api/mappings/${encodeURIComponent(course)}`, {
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(course)}`, {
                     method: 'DELETE'
                 });
                 if (!res.ok) throw new Error('Failed to delete course');
@@ -477,7 +505,7 @@
             if (!subject) return;
 
             try {
-                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}/subjects`, {
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ subject })
@@ -503,7 +531,7 @@
             if (!confirm(`Remove "${subject}" from ${selectedCourse}?`)) return;
 
             try {
-                const res = await fetch(`/api/mappings/${encodeURIComponent(selectedCourse)}/subjects/${encodeURIComponent(subject)}`, {
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects/${encodeURIComponent(subject)}`, {
                     method: 'DELETE'
                 });
                 const data = await res.json();

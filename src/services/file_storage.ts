@@ -112,8 +112,12 @@ export class FileStorageService {
         };
     }
 
-    async savePlacementFile(file: File, options?: { course?: string, subject?: string, customFileName?: string }) {
+    async savePlacementFile(file: File, options?: { course?: string, subject?: string, customFileName?: string, author?: string, accessType?: string }) {
         let finalFileName = file.name;
+        const normalizedAuthor =
+            options?.author?.trim().length
+                ? options.author.trim()
+                : "Unknown author";
 
         if (options?.customFileName) {
             const extension = file.name.split('.').pop();
@@ -143,7 +147,9 @@ export class FileStorageService {
             fileName: finalFileName,
             course: options?.course || "uncategorized",
             subject: options?.subject || "uncategorized",
+            author: normalizedAuthor,
             fileUrl: fileUrl,
+            accessType: options?.accessType || "free",
             likesCount: 0,
             viewCount: 0
         });

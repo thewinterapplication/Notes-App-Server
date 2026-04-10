@@ -1,33 +1,33 @@
 import { Elysia, t } from "elysia";
-import { MappingModel } from "../models/Mapping";
+import { PlacementMappingModel } from "../models/PlacementMapping";
 import {
     DEFAULT_COURSES,
-    getMappingForCourse,
-    getMappings,
+    getPlacementMappingForCourse,
+    getPlacementMappings,
     normalizeMappingKey,
     normalizeMappingText,
 } from "../services/mapping_service";
 
-export const mappingController = new Elysia()
-    .get("/mappings", () => Bun.file("mappings.html"))
+export const placementMappingController = new Elysia()
+    .get("/placement-mappings", () => Bun.file("mappings.html"))
 
-    .get("/api/mappings", async () => {
-        const mappings = await getMappings();
+    .get("/api/placement-mappings", async () => {
+        const mappings = await getPlacementMappings();
         return { mappings };
     })
 
-    .get("/api/mappings/:course", async ({ params }) => {
-        return await getMappingForCourse(params.course);
+    .get("/api/placement-mappings/:course", async ({ params }) => {
+        return await getPlacementMappingForCourse(params.course);
     })
 
-    .post("/api/mappings", async ({ body, set }) => {
+    .post("/api/placement-mappings", async ({ body, set }) => {
         const course = normalizeMappingText(body.course);
         if (!course) {
             set.status = 400;
             return { error: "Course name cannot be empty" };
         }
 
-        const storedMappings = await MappingModel.find();
+        const storedMappings = await PlacementMappingModel.find();
         const existingMapping = storedMappings.find(
             (mapping) => normalizeMappingKey(mapping.course) === normalizeMappingKey(course)
         );
@@ -42,7 +42,7 @@ export const mappingController = new Elysia()
         );
 
         if (isDefaultCourse) {
-            const mappings = await getMappings();
+            const mappings = await getPlacementMappings();
             const alreadyExists = mappings.some(
                 (mapping) => normalizeMappingKey(mapping.course) === normalizeMappingKey(course)
             );
@@ -59,7 +59,7 @@ export const mappingController = new Elysia()
             existingMapping.hidden = false;
             mapping = await existingMapping.save();
         } else {
-            mapping = await MappingModel.create({ course, subjects: [], hidden: false });
+            mapping = await PlacementMappingModel.create({ course, subjects: [], hidden: false });
         }
 
         return { course: mapping.course, subjects: mapping.subjects };
@@ -69,14 +69,14 @@ export const mappingController = new Elysia()
         })
     })
 
-    .post("/api/mappings/:course/subjects", async ({ params, body, set }) => {
+    .post("/api/placement-mappings/:course/subjects", async ({ params, body, set }) => {
         const subject = body.subject.trim();
         if (!subject) {
             set.status = 400;
             return { error: "Subject name cannot be empty" };
         }
 
-        const mapping = await MappingModel.findOneAndUpdate(
+        const mapping = await PlacementMappingModel.findOneAndUpdate(
             { course: params.course },
             { $addToSet: { subjects: subject }, $set: { hidden: false } },
             { upsert: true, new: true }
@@ -88,8 +88,8 @@ export const mappingController = new Elysia()
         })
     })
 
-    .delete("/api/mappings/:course/subjects/:subject", async ({ params }) => {
-        const mapping = await MappingModel.findOneAndUpdate(
+    .delete("/api/placement-mappings/:course/subjects/:subject", async ({ params }) => {
+        const mapping = await PlacementMappingModel.findOneAndUpdate(
             { course: params.course },
             { $pull: { subjects: decodeURIComponent(params.subject) } },
             { new: true }
@@ -100,14 +100,14 @@ export const mappingController = new Elysia()
         return { course: mapping.course, subjects: mapping.subjects };
     })
 
-    .delete("/api/mappings/:course", async ({ params }) => {
+    .delete("/api/placement-mappings/:course", async ({ params }) => {
         const normalizedCourse = normalizeMappingKey(params.course);
         const isDefaultCourse = DEFAULT_COURSES.some(
             (course) => normalizeMappingKey(course) === normalizedCourse
         );
 
         if (isDefaultCourse) {
-            await MappingModel.findOneAndUpdate(
+            await PlacementMappingModel.findOneAndUpdate(
                 { course: params.course },
                 {
                     $set: { hidden: true, subjects: [] },
@@ -118,6 +118,6 @@ export const mappingController = new Elysia()
             return { success: true };
         }
 
-        await MappingModel.findOneAndDelete({ course: params.course });
+        await PlacementMappingModel.findOneAndDelete({ course: params.course });
         return { success: true };
     });

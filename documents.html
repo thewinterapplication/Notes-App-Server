@@ -368,14 +368,14 @@
     <div class="container">
         <div class="header">
             <div class="header-copy">
-                <a href="/upload" class="back-link">&larr; Back to upload</a>
-                <h1>Uploaded Documents</h1>
-                <p class="subtitle">Filter, review, and delete uploaded notes PDFs.</p>
+                <a href="/upload" class="back-link" id="back-link">&larr; Back to upload</a>
+                <h1 id="page-title">Uploaded Documents</h1>
+                <p class="subtitle" id="page-subtitle">Filter, review, and delete uploaded notes PDFs.</p>
             </div>
 
             <div class="header-links">
-                <a href="/upload" class="header-link">Upload More</a>
-                <a href="/mappings" class="header-link">Manage Mappings</a>
+                <a href="/upload" class="header-link" id="upload-more-link">Upload More</a>
+                <a href="/mappings" class="header-link" id="manage-mappings-link">Manage Mappings</a>
             </div>
         </div>
 
@@ -428,6 +428,56 @@
     </div>
 
     <script>
+        const routePath = window.location.pathname.replace(/\/+$/, '') || '/documents';
+        const pageConfig = routePath === '/placements'
+            ? {
+                title: 'Uploaded Placements',
+                subtitle: 'Filter, review, and delete uploaded placement PDFs.',
+                backHref: '/upload-placement',
+                uploadHref: '/upload-placement',
+                apiUrl: '/api/placements/documents',
+                itemLabel: 'placement',
+                itemLabelPlural: 'placements',
+                loadingSummary: 'Loading placements...',
+                loadingHint: 'Fetching the latest uploaded placements.',
+                deleteLabel: 'Delete Placement',
+                emptyState: 'No placements match the current filters.',
+                deleteStorageError: 'Placement entry deleted, but the stored file could not be removed completely.',
+                loadError: 'Failed to load placements',
+                mappingsApiUrl: '/api/placement-mappings',
+                mappingsPageHref: '/placement-mappings',
+                mappingsPageLabel: 'Manage Placement Mappings',
+                mappingsLoadError: 'Failed to load placement mappings',
+            }
+            : {
+                title: 'Uploaded Documents',
+                subtitle: 'Filter, review, and delete uploaded notes PDFs.',
+                backHref: '/upload',
+                uploadHref: '/upload',
+                apiUrl: '/api/documents',
+                itemLabel: 'document',
+                itemLabelPlural: 'documents',
+                loadingSummary: 'Loading documents...',
+                loadingHint: 'Fetching the latest uploaded notes.',
+                deleteLabel: 'Delete Document',
+                emptyState: 'No documents match the current filters.',
+                deleteStorageError: 'Document entry deleted, but the stored file could not be removed completely.',
+                loadError: 'Failed to load documents',
+                mappingsApiUrl: '/api/mappings',
+                mappingsPageHref: '/mappings',
+                mappingsPageLabel: 'Manage Mappings',
+                mappingsLoadError: 'Failed to load course mappings',
+            };
+
+        document.title = pageConfig.title;
+        document.getElementById('page-title').textContent = pageConfig.title;
+        document.getElementById('page-subtitle').textContent = pageConfig.subtitle;
+        document.getElementById('back-link').href = pageConfig.backHref;
+        document.getElementById('upload-more-link').href = pageConfig.uploadHref;
+        document.getElementById('manage-mappings-link').href = pageConfig.mappingsPageHref;
+        document.getElementById('manage-mappings-link').textContent = pageConfig.mappingsPageLabel;
+        document.getElementById('empty-state').textContent = pageConfig.emptyState;
+
         const searchInput = document.getElementById('search-input');
         const courseFilter = document.getElementById('course-filter');
         const subjectFilter = document.getElementById('subject-filter');
@@ -607,7 +657,7 @@
                 accessFilter.value
             ].filter(Boolean).length;
 
-            summaryCount.textContent = `${filteredDocuments.length} document${filteredDocuments.length !== 1 ? 's' : ''}`;
+            summaryCount.textContent = `${filteredDocuments.length} ${filteredDocuments.length !== 1 ? pageConfig.itemLabelPlural : pageConfig.itemLabel}`;
             summaryHint.textContent = activeFilters > 0
                 ? `${activeFilters} filter${activeFilters !== 1 ? 's' : ''} active`
                 : 'Filters update instantly.';
@@ -660,7 +710,7 @@
 
                     <div class="card-actions">
                         <button type="button" class="delete-btn" data-document-id="${escapeHtml(doc.id)}" data-document-name="${escapeHtml(doc.fileName || 'this document')}">
-                            Delete Document
+                            ${escapeHtml(pageConfig.deleteLabel)}
                         </button>
                     </div>
                 `;
@@ -678,14 +728,14 @@
 
         async function loadDocuments() {
             setStatus('');
-            summaryCount.textContent = 'Loading documents...';
-            summaryHint.textContent = 'Fetching the latest uploaded notes.';
+            summaryCount.textContent = pageConfig.loadingSummary;
+            summaryHint.textContent = pageConfig.loadingHint;
             emptyState.style.display = 'none';
             documentsList.innerHTML = '';
 
             const [documentsResult, mappingsResult] = await Promise.allSettled([
-                fetch('/api/documents'),
-                fetch('/api/mappings')
+                fetch(pageConfig.apiUrl),
+                fetch(pageConfig.mappingsApiUrl)
             ]);
 
             let nextMappings = [];
@@ -697,10 +747,10 @@
                 if (mappingsResult.value.ok) {
                     nextMappings = Array.isArray(mappingsData.mappings) ? mappingsData.mappings : [];
                 } else {
-                    mappingsError = mappingsData.error || 'Failed to load course mappings';
+                    mappingsError = mappingsData.error || pageConfig.mappingsLoadError;
                 }
             } else {
-                mappingsError = 'Failed to load course mappings';
+                mappingsError = pageConfig.mappingsLoadError;
             }
 
             allMappings = nextMappings;
@@ -711,7 +761,7 @@
                 syncSubjectOptions();
                 updateSummary([]);
                 emptyState.style.display = 'none';
-                setStatus('Failed to load documents', true);
+                setStatus(pageConfig.loadError, true);
                 return;
             }
 
@@ -723,7 +773,7 @@
                 syncSubjectOptions();
                 updateSummary([]);
                 emptyState.style.display = 'none';
-                setStatus(documentsData.error || 'Failed to load documents', true);
+                setStatus(documentsData.error || pageConfig.loadError, true);
                 return;
             }
 
@@ -747,7 +797,7 @@
             setStatus('');
 
             try {
-                const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}`, {
+                const response = await fetch(`${pageConfig.apiUrl}/${encodeURIComponent(documentId)}`, {
                     method: 'DELETE'
                 });
                 const data = await response.json();
@@ -762,12 +812,12 @@
                 applyFilters();
 
                 if (data.storageDeleted === false) {
-                    setStatus('Document entry deleted, but the stored file could not be removed completely.', true);
+                    setStatus(pageConfig.deleteStorageError, true);
                 }
             } catch (error) {
                 button.disabled = false;
-                button.textContent = 'Delete Document';
-                setStatus(error.message || 'Failed to delete document', true);
+                button.textContent = pageConfig.deleteLabel;
+                setStatus(error.message || `Failed to delete ${pageConfig.itemLabel}`, true);
             }
         }
 
