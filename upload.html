@@ -186,6 +186,43 @@
             color: var(--text-muted);
         }
 
+        .upload-progress {
+            margin-top: 0.9rem;
+            text-align: left;
+        }
+
+        .progress-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.45rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .progress-track {
+            height: 10px;
+            background-color: rgba(148, 163, 184, 0.18);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            transition: width 0.15s ease;
+        }
+
+        .progress-meta {
+            margin: 0.45rem 0 0 0;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
         #file-name {
             margin-top: 10px;
             font-size: 0.9rem;
@@ -435,6 +472,17 @@
 
         <button id="upload-btn" class="btn" disabled>Upload File</button>
 
+        <div id="upload-progress" class="upload-progress" hidden>
+            <div class="progress-label-row">
+                <span id="upload-progress-text">Preparing upload...</span>
+                <span id="upload-progress-percent">0%</span>
+            </div>
+            <div class="progress-track">
+                <div id="upload-progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="upload-progress-meta" class="progress-meta">0 B of 0 B</p>
+        </div>
+
         <div id="result" class="result-container">
             <svg xmlns="http://www.w3.org/2000/svg" class="success-icon" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2" style="margin: 0 auto; display: block;">
@@ -513,6 +561,11 @@
         const pageSubtitle = document.getElementById('page-subtitle');
         const resultTitle = document.getElementById('result-title');
         const resultSubtitle = document.getElementById('result-subtitle');
+        const uploadProgress = document.getElementById('upload-progress');
+        const uploadProgressText = document.getElementById('upload-progress-text');
+        const uploadProgressPercent = document.getElementById('upload-progress-percent');
+        const uploadProgressFill = document.getElementById('upload-progress-fill');
+        const uploadProgressMeta = document.getElementById('upload-progress-meta');
         const authorGroup = document.getElementById('author-group');
         const accessTypeGroup = document.getElementById('access-type-group');
         const footerMappingsLink = document.getElementById('footer-mappings-link');
@@ -534,6 +587,108 @@
         placementsUploadTab.classList.toggle('active', currentConfig.mode === 'placements');
 
         dropZone.addEventListener('click', () => fileInput.click());
+
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes <= 0) {
+                return '0 B';
+            }
+
+            const units = ['B', 'KB', 'MB', 'GB'];
+            const unitIndex = Math.min(
+                Math.floor(Math.log(bytes) / Math.log(1024)),
+                units.length - 1
+            );
+            const value = bytes / (1024 ** unitIndex);
+            const precision = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+
+            return `${value.toFixed(precision)} ${units[unitIndex]}`;
+        }
+
+        function resetUploadProgress() {
+            uploadProgress.hidden = true;
+            uploadProgressText.textContent = 'Preparing upload...';
+            uploadProgressPercent.textContent = '0%';
+            uploadProgressFill.style.width = '0%';
+            uploadProgressMeta.textContent = '0 B of 0 B';
+        }
+
+        function updateUploadProgress(loaded, total) {
+            uploadProgress.hidden = false;
+
+            const hasTotal = Number.isFinite(total) && total > 0;
+            const percent = hasTotal
+                ? Math.min(100, Math.round((loaded / total) * 100))
+                : 0;
+
+            uploadProgressText.textContent = percent >= 100
+                ? 'Processing upload...'
+                : 'Uploading file...';
+            uploadProgressPercent.textContent = hasTotal ? `${percent}%` : '--';
+            uploadProgressFill.style.width = hasTotal ? `${percent}%` : '100%';
+            uploadProgressMeta.textContent = hasTotal
+                ? `${formatBytes(loaded)} of ${formatBytes(total)}`
+                : `${formatBytes(loaded)} uploaded`;
+            uploadBtn.textContent = hasTotal ? `Uploading... ${percent}%` : 'Uploading...';
+        }
+
+        function finalizeUploadProgress() {
+            const totalSize = selectedFile?.size ?? 0;
+            uploadProgress.hidden = false;
+            uploadProgressText.textContent = 'Upload complete';
+            uploadProgressPercent.textContent = '100%';
+            uploadProgressFill.style.width = '100%';
+            uploadProgressMeta.textContent = totalSize > 0
+                ? `${formatBytes(totalSize)} uploaded`
+                : 'Upload finished';
+        }
+
+        function parseJsonResponse(xhr) {
+            if (xhr.response && typeof xhr.response === 'object') {
+                return xhr.response;
+            }
+
+            try {
+                return xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            } catch (_) {
+                return {};
+            }
+        }
+
+        function uploadWithProgress(url, formData) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.responseType = 'json';
+
+                xhr.upload.addEventListener('loadstart', () => {
+                    updateUploadProgress(0, selectedFile?.size ?? 0);
+                });
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    updateUploadProgress(event.loaded, event.lengthComputable ? event.total : 0);
+                });
+
+                xhr.addEventListener('load', () => {
+                    resolve({
+                        ok: xhr.status >= 200 && xhr.status < 300,
+                        status: xhr.status,
+                        data: parseJsonResponse(xhr)
+                    });
+                });
+
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error'));
+                });
+
+                xhr.addEventListener('abort', () => {
+                    reject(new Error('Upload aborted'));
+                });
+
+                xhr.send(formData);
+            });
+        }
+
+        resetUploadProgress();
 
         fileInput.addEventListener('change', handleFileSelect);
 
@@ -570,6 +725,7 @@
             uploadBtn.disabled = false;
             resultContainer.style.display = 'none';
             uploadBtn.textContent = 'Upload File';
+            resetUploadProgress();
         }
 
         let accessType = 'free';
@@ -622,13 +778,11 @@
             }
 
             try {
-                const response = await fetch(currentConfig.uploadUrl, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json().catch(() => ({}));
+                const response = await uploadWithProgress(currentConfig.uploadUrl, formData);
+                const data = response.data || {};
 
                 if (response.ok) {
+                    finalizeUploadProgress();
                     resultContainer.style.display = 'block';
                     pdfLink.href = data.url;
                     pdfLink.textContent = data.url;
@@ -637,12 +791,14 @@
                     alert(data.error || 'Upload failed.');
                     uploadBtn.disabled = false;
                     uploadBtn.textContent = 'Upload File';
+                    resetUploadProgress();
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred.');
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = 'Upload File';
+                resetUploadProgress();
             }
         });
     </script>
