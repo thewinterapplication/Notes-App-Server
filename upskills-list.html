@@ -268,6 +268,30 @@
             color: var(--text);
         }
 
+        .delete-btn {
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            background-color: rgba(239, 68, 68, 0.08);
+            color: #fca5a5;
+            border-radius: 0.75rem;
+            padding: 0.75rem 0.95rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn:hover:not(:disabled) {
+            background-color: rgba(239, 68, 68, 0.18);
+            border-color: var(--danger);
+            color: #fee2e2;
+        }
+
+        .delete-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
         .empty-state {
             display: none;
             text-align: center;
@@ -397,6 +421,10 @@
                                 <div class="meta-value">${escapeHtml(upskill.upskillUrl || 'Missing')}</div>
                             </div>
                             <div class="meta-item">
+                                <span class="meta-label">Description</span>
+                                <div class="meta-value">${escapeHtml(upskill.description || 'Missing')}</div>
+                            </div>
+                            <div class="meta-item">
                                 <span class="meta-label">Image URL</span>
                                 <div class="meta-value">${escapeHtml(upskill.imageUrl || 'Missing')}</div>
                             </div>
@@ -405,13 +433,51 @@
                         <div class="card-actions">
                             <a class="action-link" href="${escapeHtml(upskill.upskillUrl)}" target="_blank" rel="noopener noreferrer">Open Upskill URL</a>
                             <a class="action-link" href="${escapeHtml(upskill.imageUrl)}" target="_blank" rel="noopener noreferrer">Open Image</a>
+                            <button type="button" class="delete-btn">Delete Upskill</button>
                         </div>
                     </div>
                 `;
 
+                const deleteBtn = card.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', () => deleteUpskill(upskill.id, upskill.upskillName || 'this upskill', deleteBtn));
                 itemsList.appendChild(card);
             });
         }
+
+        async function deleteUpskill(upskillId, upskillName, button) {
+            if (!confirm(`Delete "${upskillName}"?`)) {
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+            setStatus('');
+
+            try {
+                const response = await fetch(`/api/upskills/${encodeURIComponent(upskillId)}`, {
+                    method: 'DELETE'
+                });
+                const data = await parseJson(response);
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete upskill');
+                }
+
+                const remainingUpskills = currentUpskills.filter((upskill) => upskill.id !== upskillId);
+                currentUpskills = remainingUpskills;
+                renderUpskills(remainingUpskills);
+
+                if (data.storageDeleted === false) {
+                    setStatus('Upskill deleted, but the stored image could not be removed completely.', true);
+                }
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = 'Delete Upskill';
+                setStatus(error.message || 'Failed to delete upskill', true);
+            }
+        }
+
+        let currentUpskills = [];
 
         async function loadUpskills() {
             setStatus('');
@@ -427,8 +493,10 @@
                     throw new Error(data.error || 'Failed to load upskills');
                 }
 
-                renderUpskills(Array.isArray(data.upskills) ? data.upskills : []);
+                currentUpskills = Array.isArray(data.upskills) ? data.upskills : [];
+                renderUpskills(currentUpskills);
             } catch (error) {
+                currentUpskills = [];
                 renderUpskills([]);
                 setStatus(error.message || 'Failed to load upskills', true);
             }

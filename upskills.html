@@ -105,6 +105,11 @@
             border-color: var(--primary);
         }
 
+        textarea.input-field {
+            min-height: 120px;
+            resize: vertical;
+        }
+
         .upload-area {
             border: 2px dashed var(--border);
             border-radius: 0.9rem;
@@ -234,7 +239,7 @@
             <a href="/upload" class="back-link">&larr; Back to upload</a>
         </div>
         <h1>Upskill Upload</h1>
-        <p class="subtitle">Create an upskill card with a name, external URL, and image.</p>
+        <p class="subtitle">Create an upskill card with a name, description, external URL, and image.</p>
 
         <form id="upskills-form">
             <div class="form-group">
@@ -245,6 +250,11 @@
             <div class="form-group">
                 <label class="form-label" for="upskill-url">Enter URL</label>
                 <input type="url" id="upskill-url" class="input-field" placeholder="https://example.com/upskill" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="upskill-description">Description</label>
+                <textarea id="upskill-description" class="input-field" placeholder="Add a short upskill description" required></textarea>
             </div>
 
             <div class="form-group">
@@ -269,6 +279,7 @@
             <div class="result-card">
                 <p class="result-title">Upskill created</p>
                 <p class="result-meta" id="result-name"></p>
+                <p class="result-meta" id="result-description"></p>
                 <p class="result-meta"><a id="result-url" class="result-link" href="#" target="_blank" rel="noopener noreferrer"></a></p>
                 <p class="result-meta"><a id="result-image" class="result-link" href="#" target="_blank" rel="noopener noreferrer">Open uploaded image</a></p>
             </div>
@@ -279,6 +290,7 @@
         const form = document.getElementById('upskills-form');
         const upskillNameInput = document.getElementById('upskill-name');
         const upskillUrlInput = document.getElementById('upskill-url');
+        const upskillDescriptionInput = document.getElementById('upskill-description');
         const imageInput = document.getElementById('image-input');
         const dropZone = document.getElementById('drop-zone');
         const fileName = document.getElementById('file-name');
@@ -288,6 +300,7 @@
         const status = document.getElementById('status');
         const result = document.getElementById('result');
         const resultName = document.getElementById('result-name');
+        const resultDescription = document.getElementById('result-description');
         const resultUrl = document.getElementById('result-url');
         const resultImage = document.getElementById('result-image');
 
@@ -309,7 +322,11 @@
         }
 
         function updateSubmitState() {
-            submitBtn.disabled = !upskillNameInput.value.trim() || !upskillUrlInput.value.trim() || !selectedImage;
+            submitBtn.disabled =
+                !upskillNameInput.value.trim() ||
+                !upskillUrlInput.value.trim() ||
+                !upskillDescriptionInput.value.trim() ||
+                !selectedImage;
         }
 
         function handleImage(file) {
@@ -353,6 +370,7 @@
 
         upskillNameInput.addEventListener('input', updateSubmitState);
         upskillUrlInput.addEventListener('input', updateSubmitState);
+        upskillDescriptionInput.addEventListener('input', updateSubmitState);
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -369,6 +387,7 @@
             const formData = new FormData();
             formData.append('upskillName', upskillNameInput.value.trim());
             formData.append('upskillUrl', upskillUrlInput.value.trim());
+            formData.append('description', upskillDescriptionInput.value.trim());
             formData.append('image', selectedImage);
 
             try {
@@ -384,6 +403,7 @@
                 }
 
                 resultName.textContent = `Name: ${data.upskillName}`;
+                resultDescription.textContent = `Description: ${data.description}`;
                 resultUrl.href = data.upskillUrl;
                 resultUrl.textContent = data.upskillUrl;
                 resultImage.href = data.imageUrl;

@@ -268,6 +268,30 @@
             color: var(--text);
         }
 
+        .delete-btn {
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            background-color: rgba(239, 68, 68, 0.08);
+            color: #fca5a5;
+            border-radius: 0.75rem;
+            padding: 0.75rem 0.95rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn:hover:not(:disabled) {
+            background-color: rgba(239, 68, 68, 0.18);
+            border-color: var(--danger);
+            color: #fee2e2;
+        }
+
+        .delete-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
         .empty-state {
             display: none;
             text-align: center;
@@ -397,6 +421,10 @@
                                 <div class="meta-value">${escapeHtml(job.jobUrl || 'Missing')}</div>
                             </div>
                             <div class="meta-item">
+                                <span class="meta-label">Description</span>
+                                <div class="meta-value">${escapeHtml(job.description || 'Missing')}</div>
+                            </div>
+                            <div class="meta-item">
                                 <span class="meta-label">Image URL</span>
                                 <div class="meta-value">${escapeHtml(job.imageUrl || 'Missing')}</div>
                             </div>
@@ -405,13 +433,51 @@
                         <div class="card-actions">
                             <a class="action-link" href="${escapeHtml(job.jobUrl)}" target="_blank" rel="noopener noreferrer">Open Job URL</a>
                             <a class="action-link" href="${escapeHtml(job.imageUrl)}" target="_blank" rel="noopener noreferrer">Open Image</a>
+                            <button type="button" class="delete-btn">Delete Job</button>
                         </div>
                     </div>
                 `;
 
+                const deleteBtn = card.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', () => deleteJob(job.id, job.jobName || 'this job', deleteBtn));
                 itemsList.appendChild(card);
             });
         }
+
+        async function deleteJob(jobId, jobName, button) {
+            if (!confirm(`Delete "${jobName}"?`)) {
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+            setStatus('');
+
+            try {
+                const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
+                    method: 'DELETE'
+                });
+                const data = await parseJson(response);
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete job');
+                }
+
+                const remainingJobs = currentJobs.filter((job) => job.id !== jobId);
+                currentJobs = remainingJobs;
+                renderJobs(remainingJobs);
+
+                if (data.storageDeleted === false) {
+                    setStatus('Job deleted, but the stored image could not be removed completely.', true);
+                }
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = 'Delete Job';
+                setStatus(error.message || 'Failed to delete job', true);
+            }
+        }
+
+        let currentJobs = [];
 
         async function loadJobs() {
             setStatus('');
@@ -427,8 +493,10 @@
                     throw new Error(data.error || 'Failed to load jobs');
                 }
 
-                renderJobs(Array.isArray(data.jobs) ? data.jobs : []);
+                currentJobs = Array.isArray(data.jobs) ? data.jobs : [];
+                renderJobs(currentJobs);
             } catch (error) {
+                currentJobs = [];
                 renderJobs([]);
                 setStatus(error.message || 'Failed to load jobs', true);
             }

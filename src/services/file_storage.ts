@@ -161,7 +161,7 @@ export class FileStorageService {
         };
     }
 
-    async saveJobPosting(file: File, options: { jobName: string, jobUrl: string }) {
+    async saveJobPosting(file: File, options: { jobName: string, jobUrl: string, description: string }) {
         const sanitizedFileName = file.name.replace(/\s+/g, "_");
         const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
 
@@ -181,6 +181,7 @@ export class FileStorageService {
         const jobDoc = await JobModel.create({
             jobName: options.jobName.trim(),
             jobUrl: options.jobUrl.trim(),
+            description: options.description.trim(),
             imageUrl
         });
 
@@ -188,11 +189,12 @@ export class FileStorageService {
             id: jobDoc._id,
             jobName: jobDoc.jobName,
             jobUrl: jobDoc.jobUrl,
+            description: jobDoc.description,
             imageUrl
         };
     }
 
-    async saveUpskillPosting(file: File, options: { upskillName: string, upskillUrl: string }) {
+    async saveUpskillPosting(file: File, options: { upskillName: string, upskillUrl: string, description: string }) {
         const sanitizedFileName = file.name.replace(/\s+/g, "_");
         const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
 
@@ -212,6 +214,7 @@ export class FileStorageService {
         const upskillDoc = await UpskillModel.create({
             upskillName: options.upskillName.trim(),
             upskillUrl: options.upskillUrl.trim(),
+            description: options.description.trim(),
             imageUrl
         });
 
@@ -219,6 +222,7 @@ export class FileStorageService {
             id: upskillDoc._id,
             upskillName: upskillDoc.upskillName,
             upskillUrl: upskillDoc.upskillUrl,
+            description: upskillDoc.description,
             imageUrl
         };
     }

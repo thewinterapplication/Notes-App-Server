@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { Types } from "mongoose";
 import { JobModel } from "../models/Job";
 import { FileStorageService } from "../services/file_storage";
 
@@ -6,6 +7,7 @@ function serializeJob(job: {
     _id: { toString(): string };
     jobName: string;
     jobUrl: string;
+    description: string;
     imageUrl: string;
     createdAt: Date;
 }) {
@@ -13,6 +15,7 @@ function serializeJob(job: {
         id: job._id.toString(),
         jobName: job.jobName,
         jobUrl: job.jobUrl,
+        description: job.description,
         imageUrl: job.imageUrl,
         createdAt: job.createdAt
     };
@@ -26,13 +29,43 @@ export const jobController = new Elysia()
         const jobs = await JobModel.find().sort({ createdAt: -1 });
         return { jobs: jobs.map(serializeJob) };
     })
+    .delete("/api/jobs/:id", async ({ params, set, storage }) => {
+        if (!Types.ObjectId.isValid(params.id)) {
+            set.status = 400;
+            return { error: "Invalid job id" };
+        }
+
+        const job = await JobModel.findById(params.id);
+
+        if (!job) {
+            set.status = 404;
+            return { error: "Job not found" };
+        }
+
+        let storageDeleted = true;
+
+        try {
+            storageDeleted = await storage.deleteFileByUrl(job.imageUrl);
+        } catch (error) {
+            storageDeleted = false;
+            console.error(`Failed to delete stored image for job ${job._id}:`, error);
+        }
+
+        await job.deleteOne();
+
+        return {
+            success: true,
+            storageDeleted
+        };
+    })
     .post("/upload/jobs", async ({ body, storage, set }) => {
         const jobName = body.jobName.trim();
         const jobUrl = body.jobUrl.trim();
+        const description = body.description.trim();
 
-        if (!jobName || !jobUrl || !body.image) {
+        if (!jobName || !jobUrl || !description || !body.image) {
             set.status = 400;
-            return { error: "Job name, URL, and image are required" };
+            return { error: "Job name, URL, description, and image are required" };
         }
 
         const image = body.image;
@@ -53,7 +86,7 @@ export const jobController = new Elysia()
         }
 
         try {
-            return await storage.saveJobPosting(image, { jobName, jobUrl });
+            return await storage.saveJobPosting(image, { jobName, jobUrl, description });
         } catch (error: any) {
             set.status = 500;
             return { error: error.message || "Failed to create job" };
@@ -62,6 +95,7 @@ export const jobController = new Elysia()
         body: t.Object({
             jobName: t.String({ minLength: 1 }),
             jobUrl: t.String({ minLength: 1 }),
+            description: t.String({ minLength: 1 }),
             image: t.File()
         })
     });
