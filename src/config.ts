@@ -1,5 +1,6 @@
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const TWOFACTOR_API_KEY = process.env.TWOFACTOR_API_KEY || "";
+const OTP_SESSION_SECRET = process.env.OTP_SESSION_SECRET || TWOFACTOR_API_KEY;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
@@ -30,7 +31,8 @@ export const config = {
     },
     otp: {
         apiKey: TWOFACTOR_API_KEY,
-        baseUrl: "https://2factor.in/API/V1"
+        baseUrl: "https://2factor.in/API/V1",
+        sessionSecret: OTP_SESSION_SECRET
     },
     razorpay: {
         keyId: RAZORPAY_KEY_ID,
