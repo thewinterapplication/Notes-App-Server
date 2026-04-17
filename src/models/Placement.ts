@@ -9,6 +9,7 @@ export interface IPlacementDocument extends Document {
     accessType: "free" | "premium";
     likesCount: number;
     viewCount: number;
+    pageCount: number;
     createdAt: Date;
 }
 
@@ -22,6 +23,7 @@ const PlacementSchema: Schema = new Schema(
         accessType: { type: String, enum: ["free", "premium"], default: "free" },
         likesCount: { type: Number, default: 0 },
         viewCount: { type: Number, default: 0 },
+        pageCount: { type: Number, default: 0 },
     },
     { timestamps: true }
 );

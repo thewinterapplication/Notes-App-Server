@@ -2,18 +2,23 @@ import { Elysia } from "elysia";
 import { Types } from "mongoose";
 import { FileModel } from "../models/File";
 import { FileStorageService } from "../services/file_storage";
+import { buildDocumentDownloadUrl } from "../utils/download_urls";
 
 function serializeDocument(document: any) {
+    const id = document._id.toString();
+
     return {
-        id: document._id.toString(),
+        id,
         fileName: document.fileName,
         course: document.course || "uncategorized",
         subject: document.subject || "uncategorized",
         author: document.author || "Unknown author",
         fileUrl: document.fileUrl,
+        downloadUrl: buildDocumentDownloadUrl(id),
         accessType: document.accessType || "free",
         likesCount: document.likesCount || 0,
         viewCount: document.viewCount || 0,
+        pageCount: document.pageCount || 0,
         createdAt: document.createdAt
     };
 }
@@ -25,7 +30,7 @@ export const documentController = new Elysia()
 
     .get("/api/documents", async () => {
         const documents = await FileModel.find()
-            .select("fileName course subject author fileUrl accessType likesCount viewCount createdAt")
+            .select("fileName course subject author fileUrl accessType likesCount viewCount pageCount createdAt")
             .sort({ createdAt: -1 })
             .lean();
 

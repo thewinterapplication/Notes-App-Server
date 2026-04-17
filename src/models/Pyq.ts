@@ -7,6 +7,7 @@ export interface IPyqDocument extends Document {
     fileUrl: string;
     likesCount: number;
     viewCount: number;
+    pageCount: number;
     createdAt: Date;
 }
 
