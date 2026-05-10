@@ -16,6 +16,14 @@ const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || "";
 const MINIO_BUCKET = process.env.MINIO_BUCKET || "notes-app";
 const MINIO_USE_SSL = process.env.MINIO_USE_SSL === "true";
 
+// Google Calendar / Meet OAuth
+const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || "";
+const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || "";
+const GOOGLE_OAUTH_REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "http://localhost:3000/google-oauth/callback";
+const GOOGLE_ADMIN_REFRESH_TOKEN = process.env.GOOGLE_ADMIN_REFRESH_TOKEN || "";
+const GOOGLE_ADMIN_CALENDAR_ID = process.env.GOOGLE_ADMIN_CALENDAR_ID || "primary";
+const ADMIN_DASHBOARD_KEY = process.env.ADMIN_DASHBOARD_KEY || "";
+
 export const config = {
     baseUrl: BASE_URL,
     minio: {
@@ -41,5 +49,13 @@ export const config = {
         testMode: RAZORPAY_TEST_MODE,
         brandName: RAZORPAY_BRAND_NAME,
         themeColor: RAZORPAY_THEME_COLOR
-    }
+    },
+    google: {
+        oauthClientId: GOOGLE_OAUTH_CLIENT_ID,
+        oauthClientSecret: GOOGLE_OAUTH_CLIENT_SECRET,
+        oauthRedirectUri: GOOGLE_OAUTH_REDIRECT_URI,
+        adminRefreshToken: GOOGLE_ADMIN_REFRESH_TOKEN,
+        adminCalendarId: GOOGLE_ADMIN_CALENDAR_ID,
+    },
+    adminDashboardKey: ADMIN_DASHBOARD_KEY,
 };

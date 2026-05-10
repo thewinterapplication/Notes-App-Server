@@ -15,6 +15,7 @@ import { documentController } from "./controllers/document_controller";
 import { placementDocumentController } from "./controllers/placement_document_controller";
 import { jobController } from "./controllers/job_controller";
 import { upskillController } from "./controllers/upskill_controller";
+import { guidanceController } from "./controllers/guidance_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
@@ -59,6 +60,7 @@ const app = new Elysia()
   .use(placementDocumentController)
   .use(jobController)
   .use(upskillController)
+  .use(guidanceController)
 
   .listen({
     port: 3000,
