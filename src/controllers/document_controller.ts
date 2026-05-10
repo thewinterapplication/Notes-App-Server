@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { FileModel } from "../models/File";
 import { FileStorageService } from "../services/file_storage";
 import { buildDocumentDownloadUrl } from "../utils/download_urls";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 function serializeDocument(document: any) {
     const id = document._id.toString();
@@ -26,7 +27,11 @@ function serializeDocument(document: any) {
 export const documentController = new Elysia()
     .decorate("storage", new FileStorageService())
 
-    .get("/documents", () => Bun.file("documents.html"))
+    .get("/documents", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("documents.html");
+    })
 
     .get("/api/documents", async () => {
         const documents = await FileModel.find()

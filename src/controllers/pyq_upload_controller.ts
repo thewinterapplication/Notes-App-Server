@@ -1,9 +1,14 @@
 import { Elysia, t } from "elysia";
 import { FileStorageService } from "../services/file_storage";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 export const pyqUploadController = new Elysia({ prefix: "/upload-pyq" })
     .decorate('storage', new FileStorageService())
-    .get("/", () => Bun.file("upload.html"))
+    .get("/", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("upload.html");
+    })
     .post("/", async ({ body, storage }) => {
         const { file, course, subject, customFileName } = body;
 

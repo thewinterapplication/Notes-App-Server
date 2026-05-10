@@ -7,9 +7,14 @@ import {
     normalizeMappingKey,
     normalizeMappingText,
 } from "../services/mapping_service";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 export const placementMappingController = new Elysia()
-    .get("/placement-mappings", () => Bun.file("mappings.html"))
+    .get("/placement-mappings", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("mappings.html");
+    })
 
     .get("/api/placement-mappings", async () => {
         const mappings = await getPlacementMappings();

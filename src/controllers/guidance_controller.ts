@@ -3,12 +3,13 @@ import { GuidanceRequestModel } from "../models/GuidanceRequest";
 import { UserModel } from "../models/User";
 import { createGuidanceMeet, exchangeCodeForTokens, getAuthUrl } from "../services/google_meet_service";
 import { config } from "../config";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 function formatDateLocal(date: Date): string {
     return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 }
 
-function buildAdminHtml(requests: any[], key: string): string {
+function buildAdminHtml(requests: any[]): string {
     const rows = requests.map((r) => `
         <tr>
             <td>${formatDateLocal(new Date(r.scheduledAt))}</td>
@@ -174,30 +175,11 @@ export const guidanceController = new Elysia()
     })
 
     // GET /google-meet — admin HTML dashboard
-    .get("/google-meet", async ({ query, set, cookie }) => {
-        const keyFromQuery = query.key as string | undefined;
-        const keyFromCookie = cookie.adminKey?.value;
-        const validKey = config.adminDashboardKey;
-
-        const authenticated =
-            validKey && (keyFromQuery === validKey || keyFromCookie === validKey);
-
-        if (!authenticated) {
-            set.status = 401;
-            set.headers["Content-Type"] = "text/html";
-            return `<!DOCTYPE html><html><body style="background:#0f172a;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-              <div style="text-align:center">
-                <h2>Admin Access Required</h2>
-                <p style="color:#94a3b8">Add <code>?key=YOUR_ADMIN_DASHBOARD_KEY</code> to the URL</p>
-              </div>
-            </body></html>`;
-        }
-
-        if (keyFromQuery === validKey) {
-            cookie.adminKey.set({ value: validKey, httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 7 });
-        }
+    .get("/google-meet", async ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
 
         const requests = await GuidanceRequestModel.find().sort({ scheduledAt: -1 }).lean();
         set.headers["Content-Type"] = "text/html";
-        return buildAdminHtml(requests, validKey);
+        return buildAdminHtml(requests);
     });

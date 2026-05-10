@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { Types } from "mongoose";
 import { FileStorageService } from "../services/file_storage";
 import { UpskillModel } from "../models/Upskill";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 function serializeUpskill(upskill: {
     _id: { toString(): string };
@@ -23,8 +24,16 @@ function serializeUpskill(upskill: {
 
 export const upskillController = new Elysia()
     .decorate("storage", new FileStorageService())
-    .get("/upload/upskills", () => Bun.file("upskills.html"))
-    .get("/upskills", () => Bun.file("upskills-list.html"))
+    .get("/upload/upskills", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("upskills.html");
+    })
+    .get("/upskills", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("upskills-list.html");
+    })
     .get("/api/upskills", async () => {
         const upskills = await UpskillModel.find().sort({ createdAt: -1 });
         return { upskills: upskills.map(serializeUpskill) };

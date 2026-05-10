@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { PlacementModel } from "../models/Placement";
 import { FileStorageService } from "../services/file_storage";
 import { buildPlacementDownloadUrl } from "../utils/download_urls";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 function serializePlacementDocument(document: any) {
     const id = document._id.toString();
@@ -26,7 +27,11 @@ function serializePlacementDocument(document: any) {
 export const placementDocumentController = new Elysia()
     .decorate("storage", new FileStorageService())
 
-    .get("/placements", () => Bun.file("documents.html"))
+    .get("/placements", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("documents.html");
+    })
 
     .get("/api/placements/documents", async () => {
         const documents = await PlacementModel.find()

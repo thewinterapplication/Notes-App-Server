@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { Types } from "mongoose";
 import { JobModel } from "../models/Job";
 import { FileStorageService } from "../services/file_storage";
+import { requireAdminAuth } from "../utils/admin_auth";
 
 function serializeJob(job: {
     _id: { toString(): string };
@@ -23,8 +24,16 @@ function serializeJob(job: {
 
 export const jobController = new Elysia()
     .decorate("storage", new FileStorageService())
-    .get("/upload/jobs", () => Bun.file("jobs.html"))
-    .get("/jobs", () => Bun.file("jobs-list.html"))
+    .get("/upload/jobs", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("jobs.html");
+    })
+    .get("/jobs", ({ cookie, set, request }) => {
+        const authError = requireAdminAuth({ cookie, set, request });
+        if (authError) return authError;
+        return Bun.file("jobs-list.html");
+    })
     .get("/api/jobs", async () => {
         const jobs = await JobModel.find().sort({ createdAt: -1 });
         return { jobs: jobs.map(serializeJob) };
