@@ -710,3 +710,52 @@ export const getSubscriptionLastTransactionAt = (
 ) => toDateOrNull(payment?.created_at) ?? new Date();
 
 export const createEmptySubscriptionState = () => createDefaultUserSubscription();
+
+// ── One-time Order helpers (used for paid guidance bookings) ──────────────────
+
+interface RazorpayOrderEntity {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    receipt?: string;
+}
+
+export const createRazorpayOrder = async (args: {
+    amountInPaise: number;
+    receipt: string;
+    notes?: Record<string, string>;
+}): Promise<RazorpayOrderEntity> => {
+    ensureRazorpayConfig();
+    const body = {
+        amount: args.amountInPaise,
+        currency: "INR",
+        receipt: args.receipt,
+        notes: args.notes ?? {},
+    };
+    const response = await fetch(`${RAZORPAY_API_BASE_URL}/orders`, {
+        method: "POST",
+        headers: {
+            Authorization: buildAuthHeader(),
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new RazorpayApiError(`Razorpay order creation failed: ${text}`, response.status);
+    }
+    return response.json() as Promise<RazorpayOrderEntity>;
+};
+
+export const verifyRazorpayOrderSignature = (args: {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+}): boolean => {
+    ensureRazorpayConfig();
+    const expected = createHmac("sha256", config.razorpay.keySecret)
+        .update(`${args.orderId}|${args.paymentId}`)
+        .digest("hex");
+    return expected === args.signature;
+};

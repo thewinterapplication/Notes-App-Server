@@ -8,6 +8,12 @@ export interface IGuidanceRequest extends Document {
     meetLink: string;
     calendarEventId: string;
     status: "scheduled" | "completed" | "cancelled";
+    typeSlug?: string;
+    typeName?: string;
+    amountInPaise?: number;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    paidAt?: Date;
     createdAt: Date;
 }
 
@@ -20,6 +26,12 @@ const GuidanceRequestSchema: Schema = new Schema(
         meetLink: { type: String, required: true },
         calendarEventId: { type: String, required: true },
         status: { type: String, enum: ["scheduled", "completed", "cancelled"], default: "scheduled" },
+        typeSlug: { type: String },
+        typeName: { type: String },
+        amountInPaise: { type: Number },
+        razorpayOrderId: { type: String },
+        razorpayPaymentId: { type: String },
+        paidAt: { type: Date },
     },
     { timestamps: true }
 );
