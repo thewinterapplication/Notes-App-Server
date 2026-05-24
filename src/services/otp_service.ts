@@ -10,6 +10,7 @@ interface OTPSessionPayload {
     nonce: string;
     expiresAt: number;
     otpHash: string;
+    phone: string;
 }
 
 interface SendOTPResult {
@@ -21,6 +22,7 @@ interface SendOTPResult {
 interface VerifyOTPResult {
     success: boolean;
     message: string;
+    phone?: string;
 }
 
 export class OTPService {
@@ -77,11 +79,12 @@ export class OTPService {
         return timingSafeEqual(leftBuffer, rightBuffer);
     }
 
-    private buildSessionId(otp: string): string {
+    private buildSessionId(otp: string, phone: string): string {
         const payload: OTPSessionPayload = {
             nonce: randomUUID(),
             expiresAt: Date.now() + this.otpExpiryMs,
-            otpHash: ""
+            otpHash: "",
+            phone
         };
 
         payload.otpHash = this.hashOTP(payload.nonce, otp, payload.expiresAt);
@@ -111,7 +114,8 @@ export class OTPService {
             if (
                 typeof payload.nonce !== "string" ||
                 typeof payload.expiresAt !== "number" ||
-                typeof payload.otpHash !== "string"
+                typeof payload.otpHash !== "string" ||
+                typeof payload.phone !== "string"
             ) {
                 return null;
             }
@@ -157,7 +161,7 @@ export class OTPService {
 
         const cleanPhone = this.normalizePhoneNumber(phoneNumber);
         const otp = this.generateOTP();
-        const sessionId = this.buildSessionId(otp);
+        const sessionId = this.buildSessionId(otp, cleanPhone);
 
         try {
             const url = `${this.baseUrl}/${this.apiKey}/SMS/${cleanPhone}/${otp}`;
@@ -228,7 +232,8 @@ export class OTPService {
 
         return {
             success: true,
-            message: "OTP verified successfully"
+            message: "OTP verified successfully",
+            phone: session.phone
         };
     }
 }

@@ -16,7 +16,7 @@ const minioClient = new Client({
     secretKey: config.minio.secretKey
 });
 
-type UploadKind = "document" | "pyq" | "placement" | "job" | "upskill";
+type UploadKind = "document" | "pyq" | "placement" | "job" | "upskill" | "resume";
 
 function formatLogDetails(details: Record<string, unknown>) {
     return Object.entries(details)
@@ -351,6 +351,27 @@ export class FileStorageService {
             description: upskillDoc.description,
             imageUrl
         };
+    }
+
+    // Stores a resume template file (or its thumbnail) to MinIO and returns the
+    // streaming URL. Unlike other helpers it does not create a metadata doc —
+    // the resume template controller owns the ResumeTemplate record.
+    async saveResumeTemplateFile(file: File): Promise<{ url: string; fileName: string }> {
+        const sanitizedFileName = file.name.replace(/\s+/g, "_");
+        const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
+
+        const buffer = await prepareUploadBuffer(file, "resume", uniqueFileName);
+        await uploadBufferToMinio("resume", uniqueFileName, buffer, file.type);
+
+        const url = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+        logUpload("metadata-saved", {
+            kind: "resume",
+            storageKey: uniqueFileName,
+            bytes: buffer.length,
+            url,
+        });
+
+        return { url, fileName: uniqueFileName };
     }
 
     async getFileStream(fileName: string) {

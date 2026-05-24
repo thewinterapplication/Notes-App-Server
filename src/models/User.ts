@@ -47,6 +47,9 @@ export interface IUser extends Document {
     lastTransaction?: Date;
     favourites: string[];
     subscription: IUserSubscription;
+    activeSessionId?: string | null;
+    activeDeviceId?: string | null;
+    sessionUpdatedAt?: Date | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -273,6 +276,18 @@ const UserSchema = new Schema<IUser>(
         subscription: {
             type: UserSubscriptionSchema,
             default: createDefaultUserSubscription
+        },
+        activeSessionId: {
+            type: String,
+            default: null
+        },
+        activeDeviceId: {
+            type: String,
+            default: null
+        },
+        sessionUpdatedAt: {
+            type: Date,
+            default: null
         }
     },
     {

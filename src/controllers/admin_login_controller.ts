@@ -45,6 +45,13 @@ export const adminLoginController = new Elysia()
         set.headers["Content-Type"] = "text/html";
         return loginPageHtml(next, error);
     })
+    .get("/admin-logout", ({ cookie, query, set }) => {
+        cookie.adminAuth.set({ value: "", maxAge: 0, path: "/", httpOnly: true, sameSite: "lax" });
+        const next = (query.next as string) || "/";
+        set.status = 302;
+        set.headers["Location"] = `/admin-login?next=${encodeURIComponent(next)}`;
+        return new Response(null, { status: 302 });
+    })
     .post("/admin-login", ({ body, cookie, set }) => {
         const { password, next } = body as { password: string; next?: string };
         const expected = config.adminDashboardKey;
