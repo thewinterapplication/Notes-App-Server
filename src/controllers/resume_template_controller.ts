@@ -66,7 +66,24 @@ function buildResumeAdminHtml(templates: any[]): string {
     .danger-btn:hover{border-color:var(--danger);color:var(--danger)}
     .empty{text-align:center;padding:2.5rem;color:var(--muted)}
     #rt-status{margin:.5rem 0;font-size:.85rem;min-height:1.2em;color:var(--success)}
-  </style>
+    #rt-progress-wrap{display:none;margin-top:.6rem}
+    #rt-progress-wrap.active{display:block}
+    .progress-bar{width:100%;height:8px;background:#0f172a;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--primary),#8b5cf6);transition:width .15s ease}
+    .progress-label{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-top:.35rem}
+    .dropzone{position:relative;display:flex;align-items:center;gap:1rem;padding:1.1rem 1.25rem;border:1.5px dashed var(--border);border-radius:.75rem;background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.04));cursor:pointer;transition:border-color .15s,background .15s}
+    .dropzone:hover,.dropzone.drag{border-color:var(--primary);background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.08))}
+    .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .dz-icon{width:42px;height:42px;border-radius:.6rem;background:rgba(99,102,241,.18);display:flex;align-items:center;justify-content:center;color:#a5b4fc;flex-shrink:0}
+    .dz-icon svg{width:22px;height:22px}
+    .dz-text{display:flex;flex-direction:column;gap:.15rem;min-width:0;flex:1}
+    .dz-title{font-size:.92rem;color:var(--text);font-weight:500}
+    .dz-title strong{color:#a5b4fc;font-weight:600}
+    .dz-sub{font-size:.78rem;color:var(--muted)}
+    .dz-file{font-size:.85rem;color:#6ee7b7;word-break:break-all}
+    .dropzone.has-file{border-style:solid;border-color:rgba(110,231,183,.5);background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(99,102,241,.04))}
+    .dropzone.has-file .dz-icon{background:rgba(16,185,129,.18);color:#6ee7b7}
+</style>
 </head>
 <body>
   <div class="container">
@@ -81,18 +98,20 @@ function buildResumeAdminHtml(templates: any[]): string {
             <label>Template Name</label>
             <input type="text" id="rt-name" placeholder="e.g. Modern Professional Resume">
           </div>
-          <div class="form-group">
-            <label>File Type</label>
-            <select id="rt-type" class="field" style="width:120px">
-              <option value="pdf">PDF</option>
-              <option value="docx">Word (DOCX)</option>
-            </select>
-          </div>
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1">
-            <label>Template File (PDF or DOCX)</label>
-            <input type="file" id="rt-file" class="field" accept=".pdf,.doc,.docx,application/pdf">
+            <label>Template File (PDF)</label>
+            <label class="dropzone" id="rt-dropzone" for="rt-file">
+              <div class="dz-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+              </div>
+              <div class="dz-text">
+                <span class="dz-title" id="rt-dz-title">Drop your PDF here or <strong>click to browse</strong></span>
+                <span class="dz-sub" id="rt-dz-sub">PDF only · max 25&nbsp;MB</span>
+              </div>
+              <input type="file" id="rt-file" accept=".pdf,application/pdf">
+            </label>
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <button class="btn btn-primary" id="rt-submit" onclick="addTemplate()">Upload &amp; Add</button>
@@ -100,6 +119,13 @@ function buildResumeAdminHtml(templates: any[]): string {
         </div>
       </div>
       <div id="rt-status"></div>
+      <div id="rt-progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="rt-progress-fill"></div></div>
+        <div class="progress-label">
+          <span id="rt-progress-text">0%</span>
+          <span id="rt-progress-bytes"></span>
+        </div>
+      </div>
     </div>
 
     <h2>All Templates</h2>
@@ -118,19 +144,45 @@ function buildResumeAdminHtml(templates: any[]): string {
       statusEl.textContent = msg;
     }
 
-    // Auto-detect file type from the chosen file's extension
-    document.getElementById('rt-file').addEventListener('change', (e) => {
-      const f = e.target.files[0];
+    const fileInputEl = document.getElementById('rt-file');
+    const dropzoneEl = document.getElementById('rt-dropzone');
+    const dzTitleEl = document.getElementById('rt-dz-title');
+    const dzSubEl = document.getElementById('rt-dz-sub');
+    const fmtSize = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+
+    function reflectFile(f) {
+      if (!f) {
+        dropzoneEl.classList.remove('has-file');
+        dzTitleEl.innerHTML = 'Drop your PDF here or <strong>click to browse</strong>';
+        dzSubEl.textContent = 'PDF only · max 25 MB';
+        return;
+      }
+      dropzoneEl.classList.add('has-file');
+      dzTitleEl.textContent = f.name;
+      dzSubEl.textContent = fmtSize(f.size) + ' · click to change';
+    }
+
+    fileInputEl.addEventListener('change', (e) => reflectFile(e.target.files[0]));
+
+    ['dragenter','dragover'].forEach(ev => dropzoneEl.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); dropzoneEl.classList.add('drag');
+    }));
+    ['dragleave','drop'].forEach(ev => dropzoneEl.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); dropzoneEl.classList.remove('drag');
+    }));
+    dropzoneEl.addEventListener('drop', (e) => {
+      const f = e.dataTransfer?.files?.[0];
       if (!f) return;
-      const ext = f.name.split('.').pop().toLowerCase();
-      if (ext === 'pdf') document.getElementById('rt-type').value = 'pdf';
-      else if (ext === 'doc' || ext === 'docx') document.getElementById('rt-type').value = 'docx';
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInputEl.files = dt.files;
+      reflectFile(f);
     });
 
     async function addTemplate() {
       const name = document.getElementById('rt-name').value.trim();
-      const fileType = document.getElementById('rt-type').value;
-      const fileInput = document.getElementById('rt-file');
+      const fileType = 'pdf';
+      const fileInput = fileInputEl;
       if (!name) { setStatus('Template name is required.', true); return; }
       if (!fileInput.files[0]) { setStatus('Please choose a template file.', true); return; }
 
@@ -140,19 +192,55 @@ function buildResumeAdminHtml(templates: any[]): string {
       form.append('file', fileInput.files[0]);
 
       const btn = document.getElementById('rt-submit');
+      const wrap = document.getElementById('rt-progress-wrap');
+      const fill = document.getElementById('rt-progress-fill');
+      const pctText = document.getElementById('rt-progress-text');
+      const bytesText = document.getElementById('rt-progress-bytes');
       btn.disabled = true;
       setStatus('Uploading...');
-      try {
-        const res = await fetch('/api/admin/resume-templates/upload?key=' + KEY, {
-          method: 'POST',
-          body: form
-        });
-        if (res.ok) { setStatus('Template uploaded! Reloading...'); setTimeout(() => location.reload(), 800); }
-        else { const d = await res.json(); setStatus(d.error || 'Failed', true); btn.disabled = false; }
-      } catch (err) {
-        setStatus('Upload error: ' + err.message, true);
+      wrap.classList.add('active');
+      fill.style.width = '0%';
+      pctText.textContent = '0%';
+      bytesText.textContent = '';
+
+      const fmt = (n) => {
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+        return (n / 1024 / 1024).toFixed(2) + ' MB';
+      };
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/resume-templates/upload?key=' + KEY);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          fill.style.width = pct + '%';
+          pctText.textContent = pct + '%';
+          bytesText.textContent = fmt(e.loaded) + ' / ' + fmt(e.total);
+        } else {
+          bytesText.textContent = fmt(e.loaded) + ' uploaded';
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          fill.style.width = '100%';
+          pctText.textContent = '100%';
+          setStatus('Template uploaded! Reloading...');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          let msg = 'Failed';
+          try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
+          setStatus(msg, true);
+          btn.disabled = false;
+          wrap.classList.remove('active');
+        }
+      };
+      xhr.onerror = () => {
+        setStatus('Upload error: network failure', true);
         btn.disabled = false;
-      }
+        wrap.classList.remove('active');
+      };
+      xhr.send(form);
     }
 
     async function toggleTemplate(id, isActive) {

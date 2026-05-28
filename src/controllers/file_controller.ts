@@ -6,6 +6,7 @@ import { JobModel } from "../models/Job";
 import { PlacementModel } from "../models/Placement";
 import { PyqModel } from "../models/Pyq";
 import { UpskillModel } from "../models/Upskill";
+import { ResumeTemplateModel } from "../models/ResumeTemplate";
 import { UserModel } from "../models/User";
 import { hasSubscriptionEntitlement } from "../utils/subscription_access";
 import { buildDocumentDownloadUrl } from "../utils/download_urls";
@@ -681,15 +682,18 @@ export const fileController = new Elysia()
             const encodedKey = encodeURIComponent(storageKey);
             const suffixPattern = new RegExp(encodedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
 
-            const [file, placement, pyq, job, upskill] = await Promise.all([
+            const [file, placement, pyq, job, upskill, resumeByFile, resumeByThumb] = await Promise.all([
                 FileModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
                 PlacementModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
                 PyqModel.findOne({ fileUrl: suffixPattern }).select("_id").lean(),
                 JobModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
                 UpskillModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
+                ResumeTemplateModel.findOne({ fileUrl: suffixPattern }).select("_id").lean(),
+                ResumeTemplateModel.findOne({ thumbnailUrl: suffixPattern }).select("_id").lean(),
             ]);
+            const resume = resumeByFile || resumeByThumb;
 
-            if (!file && !placement && !pyq && !job && !upskill) {
+            if (!file && !placement && !pyq && !job && !upskill && !resume) {
                 set.status = 404;
                 logFileStream("request-rejected", {
                     route: "legacy-files",
@@ -705,7 +709,7 @@ export const fileController = new Elysia()
                 : placement
                     ? (placement.accessType || "free")
                     : null;
-            const isFreeFile = Boolean(pyq || job || upskill || resolvedAccessType === "free");
+            const isFreeFile = Boolean(pyq || job || upskill || resume || resolvedAccessType === "free");
 
             const accessError = await getAccessError(
                 isFreeFile,

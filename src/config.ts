@@ -6,7 +6,7 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
 const RAZORPAY_TEST_MODE = process.env.RAZORPAY_TEST_MODE !== "false";
 const RAZORPAY_BRAND_NAME = process.env.RAZORPAY_BRAND_NAME || "College Notes";
-const RAZORPAY_THEME_COLOR = process.env.RAZORPAY_THEME_COLOR || "#FF6A3D";
+const RAZORPAY_THEME_COLOR = process.env.RAZORPAY_THEME_COLOR || "#7C3AED";
 
 // MinIO Configuration
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "localhost";
