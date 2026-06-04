@@ -38,6 +38,12 @@ export interface IUserSubscription {
     lastWebhookReceivedAt?: Date | null;
     lastSignatureVerifiedAt?: Date | null;
     cancelAtCycleEnd: boolean;
+    introTrialUsed: boolean;
+    introTrialActive: boolean;
+    introTrialStartedAt?: Date | null;
+    introTrialEndsAt?: Date | null;
+    introTrialAmountInPaise?: number | null;
+    recurringAmountInPaise?: number | null;
     updatedAt?: Date | null;
 }
 
@@ -80,6 +86,12 @@ export const createDefaultUserSubscription = (): IUserSubscription => ({
     lastWebhookReceivedAt: null,
     lastSignatureVerifiedAt: null,
     cancelAtCycleEnd: false,
+    introTrialUsed: false,
+    introTrialActive: false,
+    introTrialStartedAt: null,
+    introTrialEndsAt: null,
+    introTrialAmountInPaise: null,
+    recurringAmountInPaise: null,
     updatedAt: null
 });
 
@@ -126,8 +138,7 @@ export const normalizeUserSubscription = (
 ): IUserSubscription => {
     const defaults = createDefaultUserSubscription();
     const resolvedSubscription = toPlainUserSubscription(subscription);
-
-    return {
+    const merged = {
         ...defaults,
         ...resolvedSubscription,
         notes: resolvedSubscription?.notes ?? defaults.notes,
@@ -135,7 +146,36 @@ export const normalizeUserSubscription = (
         customerNotify:
             resolvedSubscription?.customerNotify ?? defaults.customerNotify,
         cancelAtCycleEnd:
-            resolvedSubscription?.cancelAtCycleEnd ?? defaults.cancelAtCycleEnd
+            resolvedSubscription?.cancelAtCycleEnd ?? defaults.cancelAtCycleEnd,
+        introTrialUsed:
+            resolvedSubscription?.introTrialUsed ?? defaults.introTrialUsed,
+        introTrialStartedAt:
+            resolvedSubscription?.introTrialStartedAt ?? defaults.introTrialStartedAt,
+        introTrialEndsAt:
+            resolvedSubscription?.introTrialEndsAt ?? defaults.introTrialEndsAt,
+        introTrialAmountInPaise:
+            resolvedSubscription?.introTrialAmountInPaise ??
+            defaults.introTrialAmountInPaise,
+        recurringAmountInPaise:
+            resolvedSubscription?.recurringAmountInPaise ??
+            defaults.recurringAmountInPaise
+    };
+
+    const introTrialEntitledStatuses = new Set<UserSubscriptionStatus>([
+        "authenticated",
+        "active",
+        "pending",
+        "halted",
+        "paused"
+    ]);
+
+    return {
+        ...merged,
+        introTrialActive:
+            Boolean(merged.introTrialUsed) &&
+            Boolean(merged.introTrialEndsAt) &&
+            introTrialEntitledStatuses.has(merged.status) &&
+            new Date(merged.introTrialEndsAt as Date).getTime() > Date.now()
     };
 };
 
@@ -241,6 +281,30 @@ const UserSubscriptionSchema = new Schema<IUserSubscription>(
         cancelAtCycleEnd: {
             type: Boolean,
             default: false
+        },
+        introTrialUsed: {
+            type: Boolean,
+            default: false
+        },
+        introTrialActive: {
+            type: Boolean,
+            default: false
+        },
+        introTrialStartedAt: {
+            type: Date,
+            default: null
+        },
+        introTrialEndsAt: {
+            type: Date,
+            default: null
+        },
+        introTrialAmountInPaise: {
+            type: Number,
+            default: null
+        },
+        recurringAmountInPaise: {
+            type: Number,
+            default: null
         },
         updatedAt: {
             type: Date,

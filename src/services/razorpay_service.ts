@@ -57,6 +57,9 @@ export interface AppSubscriptionPlan {
     surfaceColor: string;
     popular: boolean;
     amountInPaise: number;
+    introductoryAmountInPaise?: number | null;
+    introductoryPeriodDays?: number | null;
+    recurringAmountInPaise?: number | null;
     currency: string;
     period: RazorpayPlanPeriod;
     interval: number;
@@ -95,16 +98,17 @@ const planTemplates: AppSubscriptionPlanTemplate[] = [
         code: "monthly",
         envKey: "RAZORPAY_MONTHLY_PLAN_ID",
         fallbackTitle: "Monthly Pass",
-        fallbackDescription: "Flexible monthly billing with Razorpay Checkout.",
+        fallbackDescription: "First month access for Rs 1, then Rs 39/month.",
         badge: "Most Popular",
         accentColor: "#FF6A3D",
         surfaceColor: "#FFF1EA",
         popular: true,
         period: "monthly",
         interval: 1,
-        defaultAmountInPaise: 3000,
+        defaultAmountInPaise: 3900,
         benefits: [
-            "Secure recurring billing via Razorpay",
+            "First month access for Rs 1",
+            "Rs 39/month from the second month",
             "UPI apps, cards and other enabled methods on checkout",
             "Manage or cancel directly from the app"
         ]
@@ -130,7 +134,7 @@ const planTemplates: AppSubscriptionPlanTemplate[] = [
 ];
 
 const DEFAULT_MONTHLY_PLAN_CODE = "monthly";
-const DEFAULT_MONTHLY_PLAN_AMOUNT_IN_PAISE = 3000;
+const DEFAULT_MONTHLY_PLAN_AMOUNT_IN_PAISE = 3900;
 const DEFAULT_MONTHLY_PLAN_INTERVAL = 1;
 const DEFAULT_MONTHLY_PLAN_NOTES = {
     app_plan_code: DEFAULT_MONTHLY_PLAN_CODE,
@@ -203,6 +207,23 @@ const normalizeNotes = (value: unknown): Record<string, string> => {
 const toDateOrNull = (unixTime?: number | null) =>
     unixTime ? new Date(unixTime * 1000) : null;
 
+const toDateFromUnixTextOrNull = (value?: string | null) => {
+    if (!value) {
+        return null;
+    }
+
+    const timestamp = Number(value);
+    return Number.isFinite(timestamp) ? toDateOrNull(timestamp) : null;
+};
+
+const addDays = (date: Date, days: number) => {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+};
+
+const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
+
 const parseConfiguredAmountInPaise = (rawValue: string) => {
     const trimmedValue = rawValue.trim();
 
@@ -215,6 +236,44 @@ const parseConfiguredAmountInPaise = (rawValue: string) => {
     }
 
     return Math.round(Number(trimmedValue) * 100);
+};
+
+const parsePositiveInteger = (rawValue: string) => {
+    const trimmedValue = rawValue.trim();
+
+    if (!/^\d+$/.test(trimmedValue)) {
+        return null;
+    }
+
+    const value = Number(trimmedValue);
+    return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const DEFAULT_MONTHLY_TRIAL_AMOUNT_IN_PAISE = 100; // Rs 1
+const DEFAULT_MONTHLY_TRIAL_DAYS = 30;
+
+/**
+ * Resolves the monthly intro-trial offer from the environment. Both the price
+ * (RAZORPAY_MONTHLY_TRIAL_AMOUNT, in rupees) and the length
+ * (RAZORPAY_MONTHLY_TRIAL_DAYS, in days) are configurable. Blank, zero or
+ * invalid values fall back to the defaults above, so the monthly plan always
+ * carries a trial.
+ */
+export const resolveMonthlyIntroTrialConfig = () => {
+    const parsedAmountInPaise = parseConfiguredAmountInPaise(
+        process.env.RAZORPAY_MONTHLY_TRIAL_AMOUNT || ""
+    );
+    const parsedDays = parsePositiveInteger(
+        process.env.RAZORPAY_MONTHLY_TRIAL_DAYS || ""
+    );
+
+    return {
+        amountInPaise:
+            parsedAmountInPaise && parsedAmountInPaise > 0
+                ? parsedAmountInPaise
+                : DEFAULT_MONTHLY_TRIAL_AMOUNT_IN_PAISE,
+        periodDays: parsedDays ?? DEFAULT_MONTHLY_TRIAL_DAYS
+    };
 };
 
 const resolveConfiguredPlanTemplates = () =>
@@ -387,45 +446,65 @@ const createRazorpayPlan = async (payload: {
         })
     });
 
+// Only the monthly plan carries an intro trial; other periods opt out.
+const introTrialForTemplate = (template: AppSubscriptionPlanTemplate) =>
+    template.period === "monthly"
+        ? resolveMonthlyIntroTrialConfig()
+        : { amountInPaise: null, periodDays: null };
+
 const mapPlanEntityToAppPlan = (
     template: AppSubscriptionPlanTemplate,
     entity: RazorpayPlanEntity
-): AppSubscriptionPlan => ({
-    code: template.code,
-    planId: entity.id,
-    title: entity.item.name || template.fallbackTitle,
-    subtitle: entity.item.description || template.fallbackDescription,
-    description: entity.item.description || template.fallbackDescription,
-    badge: template.badge,
-    accentColor: template.accentColor,
-    surfaceColor: template.surfaceColor,
-    popular: template.popular,
-    amountInPaise: entity.item.amount,
-    currency: entity.item.currency || "INR",
-    period: entity.period,
-    interval: entity.interval,
-    benefits: template.benefits
-});
+): AppSubscriptionPlan => {
+    const introTrial = introTrialForTemplate(template);
+
+    return {
+        code: template.code,
+        planId: entity.id,
+        title: entity.item.name || template.fallbackTitle,
+        subtitle: entity.item.description || template.fallbackDescription,
+        description: entity.item.description || template.fallbackDescription,
+        badge: template.badge,
+        accentColor: template.accentColor,
+        surfaceColor: template.surfaceColor,
+        popular: template.popular,
+        amountInPaise: entity.item.amount,
+        introductoryAmountInPaise: introTrial.amountInPaise,
+        introductoryPeriodDays: introTrial.periodDays,
+        recurringAmountInPaise: entity.item.amount,
+        currency: entity.item.currency || "INR",
+        period: entity.period,
+        interval: entity.interval,
+        benefits: template.benefits
+    };
+};
 
 const mapConfiguredAmountToAppPlan = (
     template: AppSubscriptionPlanTemplate,
     amountInPaise: number
-): AppSubscriptionPlan => ({
-    code: template.code,
-    planId: buildLocalConfiguredPlanId(template.code, amountInPaise),
-    title: template.fallbackTitle,
-    subtitle: template.fallbackDescription,
-    description: template.fallbackDescription,
-    badge: template.badge,
-    accentColor: template.accentColor,
-    surfaceColor: template.surfaceColor,
-    popular: template.popular,
-    amountInPaise,
-    currency: "INR",
-    period: template.period,
-    interval: template.interval,
-    benefits: template.benefits
-});
+): AppSubscriptionPlan => {
+    const introTrial = introTrialForTemplate(template);
+
+    return {
+        code: template.code,
+        planId: buildLocalConfiguredPlanId(template.code, amountInPaise),
+        title: template.fallbackTitle,
+        subtitle: template.fallbackDescription,
+        description: template.fallbackDescription,
+        badge: template.badge,
+        accentColor: template.accentColor,
+        surfaceColor: template.surfaceColor,
+        popular: template.popular,
+        amountInPaise,
+        introductoryAmountInPaise: introTrial.amountInPaise,
+        introductoryPeriodDays: introTrial.periodDays,
+        recurringAmountInPaise: amountInPaise,
+        currency: "INR",
+        period: template.period,
+        interval: template.interval,
+        benefits: template.benefits
+    };
+};
 
 const ensureGeneratedPlanForTemplate = async (
     template: AppSubscriptionPlanTemplate,
@@ -556,6 +635,7 @@ export const createRazorpaySubscription = async (args: {
     plan: AppSubscriptionPlan;
     userName: string;
     userPhone: string;
+    introTrialEligible: boolean;
 }) => {
     const localConfiguredPlan = parseLocalConfiguredPlanId(args.plan.planId);
     const resolvedPlanId = localConfiguredPlan
@@ -568,8 +648,20 @@ export const createRazorpaySubscription = async (args: {
 
     const totalCount = maxTotalCountFor(args.plan.period, args.plan.interval);
     const expireBy = Math.floor(Date.now() / 1000) + 20 * 60;
+    const introTrialAmountInPaise =
+        args.introTrialEligible && args.plan.period === "monthly"
+            ? args.plan.introductoryAmountInPaise ?? null
+            : null;
+    const introTrialDays =
+        introTrialAmountInPaise !== null
+            ? args.plan.introductoryPeriodDays ?? DEFAULT_MONTHLY_TRIAL_DAYS
+            : null;
+    const introTrialStartedAt = new Date();
+    const introTrialEndsAt = introTrialDays
+        ? addDays(introTrialStartedAt, introTrialDays)
+        : null;
 
-    console.log(`[razorpay] Creating subscription: plan_id=${resolvedPlanId}, total_count=${totalCount}, expire_by=${expireBy}, period=${args.plan.period}, interval=${args.plan.interval}, user=${args.userPhone}`);
+    console.log(`[razorpay] Creating subscription: plan_id=${resolvedPlanId}, total_count=${totalCount}, expire_by=${expireBy}, period=${args.plan.period}, interval=${args.plan.interval}, intro_trial=${Boolean(introTrialEndsAt)}, user=${args.userPhone}`);
 
     const result = await razorpayRequest<RazorpaySubscriptionEntity>("/subscriptions", {
         method: "POST",
@@ -579,11 +671,36 @@ export const createRazorpaySubscription = async (args: {
             quantity: 1,
             customer_notify: true,
             expire_by: expireBy,
+            ...(introTrialEndsAt
+                ? {
+                    start_at: toUnixTime(introTrialEndsAt),
+                    addons: [
+                        {
+                            item: {
+                                name: "Introductory first month access",
+                                amount: introTrialAmountInPaise,
+                                currency: args.plan.currency || "INR"
+                            }
+                        }
+                    ]
+                }
+                : {}),
             notes: {
                 app_name: config.razorpay.brandName,
                 app_plan_code: args.plan.code,
                 user_name: args.userName,
-                user_phone: args.userPhone
+                user_phone: args.userPhone,
+                app_intro_trial: introTrialEndsAt ? "true" : "false",
+                app_intro_trial_amount_in_paise: introTrialAmountInPaise
+                    ? String(introTrialAmountInPaise)
+                    : "",
+                app_intro_trial_started_at: introTrialEndsAt
+                    ? String(toUnixTime(introTrialStartedAt))
+                    : "",
+                app_intro_trial_ends_at: introTrialEndsAt
+                    ? String(toUnixTime(introTrialEndsAt))
+                    : "",
+                app_recurring_amount_in_paise: String(args.plan.amountInPaise)
             }
         })
     });
@@ -634,6 +751,12 @@ export const verifyRazorpayWebhookSignature = (rawBody: string, signature: strin
     return expectedSignature === signature;
 };
 
+export const hasUsedSubscriptionOffer = (subscription: IUserSubscription) =>
+    subscription.introTrialUsed ||
+    subscription.paidCount > 0 ||
+    Boolean(subscription.lastPaymentId) ||
+    Boolean(subscription.subscriptionId && subscription.status !== "created");
+
 export const buildUserSubscriptionState = (args: {
     existing?: Partial<IUserSubscription> | null;
     subscription: RazorpaySubscriptionEntity;
@@ -648,6 +771,24 @@ export const buildUserSubscriptionState = (args: {
     const existingState = normalizeUserSubscription(args.existing);
     const notes = normalizeNotes(args.subscription.notes);
     const fallbackPlanCode = resolvePlanCodeFromPlanId(args.subscription.plan_id);
+    const introTrialWasRequested = notes.app_intro_trial === "true";
+    const introTrialIsConsumed =
+        introTrialWasRequested &&
+        args.subscription.status !== "none" &&
+        args.subscription.status !== "created";
+    const introTrialUsed = existingState.introTrialUsed || introTrialIsConsumed;
+    const introTrialStartedAt =
+        toDateFromUnixTextOrNull(notes.app_intro_trial_started_at) ??
+        existingState.introTrialStartedAt;
+    const introTrialEndsAt =
+        toDateFromUnixTextOrNull(notes.app_intro_trial_ends_at) ??
+        existingState.introTrialEndsAt;
+    const introTrialAmountInPaise =
+        Number(notes.app_intro_trial_amount_in_paise) ||
+        existingState.introTrialAmountInPaise;
+    const recurringAmountInPaise =
+        Number(notes.app_recurring_amount_in_paise) ||
+        existingState.recurringAmountInPaise;
 
     return normalizeUserSubscription({
         ...existingState,
@@ -682,6 +823,19 @@ export const buildUserSubscriptionState = (args: {
         lastSignatureVerifiedAt:
             args.lastSignatureVerifiedAt ?? existingState.lastSignatureVerifiedAt,
         cancelAtCycleEnd: args.cancelAtCycleEnd ?? existingState.cancelAtCycleEnd,
+        introTrialUsed,
+        introTrialActive:
+            introTrialUsed &&
+            Boolean(introTrialEndsAt) &&
+            new Date(introTrialEndsAt as Date).getTime() > Date.now(),
+        introTrialStartedAt: introTrialUsed
+            ? introTrialStartedAt
+            : existingState.introTrialStartedAt,
+        introTrialEndsAt: introTrialUsed
+            ? introTrialEndsAt
+            : existingState.introTrialEndsAt,
+        introTrialAmountInPaise,
+        recurringAmountInPaise,
         updatedAt: new Date()
     });
 };

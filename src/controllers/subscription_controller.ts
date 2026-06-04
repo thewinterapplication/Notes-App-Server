@@ -12,6 +12,7 @@ import {
     getAppSubscriptionPlans,
     getRazorpayServiceErrorMessage,
     getSubscriptionLastTransactionAt,
+    hasUsedSubscriptionOffer,
     verifyRazorpaySubscriptionSignature,
     verifyRazorpayWebhookSignature
 } from "../services/razorpay_service";
@@ -180,7 +181,8 @@ export const subscriptionController = new Elysia({ prefix: "/api/subscriptions" 
             const subscription = await createRazorpaySubscription({
                 plan,
                 userName: user.name,
-                userPhone: user.phone
+                userPhone: user.phone,
+                introTrialEligible: !hasUsedSubscriptionOffer(currentSubscription)
             });
 
             user.subscription = buildUserSubscriptionState({
