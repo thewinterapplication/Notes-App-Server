@@ -4,6 +4,7 @@ import { FileStorageService } from "../services/file_storage";
 import { FileModel } from "../models/File";
 import { JobModel } from "../models/Job";
 import { PlacementModel } from "../models/Placement";
+import { JntuModel } from "../models/Jntu";
 import { PyqModel } from "../models/Pyq";
 import { UpskillModel } from "../models/Upskill";
 import { ResumeTemplateModel } from "../models/ResumeTemplate";
@@ -483,6 +484,75 @@ export const fileController = new Elysia()
         });
     })
 
+    .get("/api/jntu/documents/:id/file", async ({ params, query, headers, set, fileService }) => {
+        logFileStream("request-received", {
+            route: "jntu",
+            documentId: params.id,
+            requestedRange: typeof headers.range === "string" ? headers.range : "none",
+        });
+
+        if (!Types.ObjectId.isValid(params.id)) {
+            set.status = 400;
+            logFileStream("request-rejected", {
+                route: "jntu",
+                documentId: params.id,
+                status: 400,
+                reason: "invalid-document-id",
+            });
+            return { error: "Invalid document id" };
+        }
+
+        const document = await JntuModel.findById(params.id)
+            .select("fileUrl accessType")
+            .lean();
+
+        if (!document) {
+            set.status = 404;
+            logFileStream("request-rejected", {
+                route: "jntu",
+                documentId: params.id,
+                status: 404,
+                reason: "document-not-found",
+            });
+            return { error: "Document not found" };
+        }
+
+        const accessError = await getAccessError(
+            (document.accessType || "free") === "free",
+            headers as Record<string, unknown>,
+            query as Record<string, unknown>,
+            set
+        );
+
+        if (accessError) {
+            logFileStream("request-rejected", {
+                route: "jntu",
+                documentId: params.id,
+                status: set.status,
+                reason: "access-denied",
+            });
+            return accessError;
+        }
+
+        const storageKey = fileService.getStorageKeyFromUrl(document.fileUrl);
+
+        if (!storageKey) {
+            set.status = 404;
+            logFileStream("request-rejected", {
+                route: "jntu",
+                documentId: params.id,
+                status: 404,
+                reason: "storage-key-missing",
+            });
+            return { error: "File not found" };
+        }
+
+        return await streamStoredFile(storageKey, headers as Record<string, unknown>, set, fileService, {
+            route: "jntu",
+            documentId: params.id,
+        });
+    })
+
     .get("/api/pyq/documents/:id/file", async ({ params, headers, set, fileService }) => {
         logFileStream("request-received", {
             route: "pyq",
@@ -607,6 +677,42 @@ export const fileController = new Elysia()
         });
     })
 
+    .get("/api/jntu/documents/:id/page/:pageNum", async ({ params, query, headers, set, fileService }) => {
+        if (!Types.ObjectId.isValid(params.id)) {
+            set.status = 400;
+            return { error: "Invalid document id" };
+        }
+
+        const pageNum = Number(params.pageNum);
+        if (!Number.isInteger(pageNum) || pageNum < 1) {
+            set.status = 400;
+            return { error: "Invalid page number" };
+        }
+
+        const document = await JntuModel.findById(params.id)
+            .select("fileUrl accessType pageCount")
+            .lean();
+
+        if (!document) { set.status = 404; return { error: "Document not found" }; }
+        if (pageNum > (document.pageCount || 0)) { set.status = 404; return { error: "Page not found" }; }
+
+        const accessError = await getAccessError(
+            (document.accessType || "free") === "free",
+            headers as Record<string, unknown>,
+            query as Record<string, unknown>,
+            set
+        );
+        if (accessError) return accessError;
+
+        const baseKey = fileService.getStorageKeyFromUrl(document.fileUrl);
+        if (!baseKey) { set.status = 404; return { error: "File not found" }; }
+
+        return await streamStoredFile(`${baseKey}_page_${pageNum}.pdf`, headers as Record<string, unknown>, set, fileService, {
+            route: "jntu-page",
+            documentId: params.id,
+        });
+    })
+
     .get("/api/pyq/documents/:id/page/:pageNum", async ({ params, headers, set, fileService }) => {
         if (!Types.ObjectId.isValid(params.id)) {
             set.status = 400;
@@ -658,6 +764,17 @@ export const fileController = new Elysia()
         }
     })
 
+    .post("/api/admin/jntu/:id/process-pages", async ({ params, set, fileService }) => {
+        if (!Types.ObjectId.isValid(params.id)) { set.status = 400; return { error: "Invalid id" }; }
+        try {
+            const pageCount = await fileService.reprocessPages("jntu", params.id);
+            return { success: true, pageCount };
+        } catch (error: any) {
+            set.status = 500;
+            return { error: error.message };
+        }
+    })
+
     .post("/api/admin/pyq/:id/process-pages", async ({ params, set, fileService }) => {
         if (!Types.ObjectId.isValid(params.id)) { set.status = 400; return { error: "Invalid id" }; }
         try {
@@ -682,9 +799,10 @@ export const fileController = new Elysia()
             const encodedKey = encodeURIComponent(storageKey);
             const suffixPattern = new RegExp(encodedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
 
-            const [file, placement, pyq, job, upskill, resumeByFile, resumeByThumb] = await Promise.all([
+            const [file, placement, jntu, pyq, job, upskill, resumeByFile, resumeByThumb] = await Promise.all([
                 FileModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
                 PlacementModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
+                JntuModel.findOne({ fileUrl: suffixPattern }).select("accessType").lean(),
                 PyqModel.findOne({ fileUrl: suffixPattern }).select("_id").lean(),
                 JobModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
                 UpskillModel.findOne({ imageUrl: suffixPattern }).select("_id").lean(),
@@ -693,7 +811,7 @@ export const fileController = new Elysia()
             ]);
             const resume = resumeByFile || resumeByThumb;
 
-            if (!file && !placement && !pyq && !job && !upskill && !resume) {
+            if (!file && !placement && !jntu && !pyq && !job && !upskill && !resume) {
                 set.status = 404;
                 logFileStream("request-rejected", {
                     route: "legacy-files",
@@ -708,7 +826,9 @@ export const fileController = new Elysia()
                 ? (file.accessType || "free")
                 : placement
                     ? (placement.accessType || "free")
-                    : null;
+                    : jntu
+                        ? (jntu.accessType || "free")
+                        : null;
             const isFreeFile = Boolean(pyq || job || upskill || resume || resolvedAccessType === "free");
 
             const accessError = await getAccessError(

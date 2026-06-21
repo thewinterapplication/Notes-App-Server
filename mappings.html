@@ -277,6 +277,15 @@
                 emptyState: 'No placement subjects mapped yet',
                 addCoursePrompt: 'Enter new placement course name or code:'
             }
+            : routePath === '/jntu-mappings'
+            ? {
+                title: 'JNTU Mappings',
+                subtitle: 'Manage JNTU syllabus subjects for each course',
+                backHref: '/upload-jntu',
+                apiBase: '/api/jntu-mappings',
+                emptyState: 'No JNTU subjects mapped yet',
+                addCoursePrompt: 'Enter new JNTU course name or code:'
+            }
             : {
                 title: 'Mappings',
                 subtitle: 'Manage subjects for each course',

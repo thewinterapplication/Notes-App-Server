@@ -8,11 +8,15 @@ import { pyqController } from "./controllers/pyq_controller";
 import { pyqUploadController } from "./controllers/pyq_upload_controller";
 import { placementController } from "./controllers/placement_controller";
 import { placementUploadController } from "./controllers/placement_upload_controller";
+import { jntuController } from "./controllers/jntu_controller";
+import { jntuUploadController } from "./controllers/jntu_upload_controller";
 import { subscriptionController } from "./controllers/subscription_controller";
 import { mappingController } from "./controllers/mapping_controller";
 import { placementMappingController } from "./controllers/placement_mapping_controller";
+import { jntuMappingController } from "./controllers/jntu_mapping_controller";
 import { documentController } from "./controllers/document_controller";
 import { placementDocumentController } from "./controllers/placement_document_controller";
+import { jntuDocumentController } from "./controllers/jntu_document_controller";
 import { jobController } from "./controllers/job_controller";
 import { upskillController } from "./controllers/upskill_controller";
 import { guidanceController } from "./controllers/guidance_controller";
@@ -93,11 +97,15 @@ const app = new Elysia()
   .use(pyqUploadController)
   .use(placementController)
   .use(placementUploadController)
+  .use(jntuController)
+  .use(jntuUploadController)
   .use(subscriptionController)
   .use(mappingController)
   .use(placementMappingController)
+  .use(jntuMappingController)
   .use(documentController)
   .use(placementDocumentController)
+  .use(jntuDocumentController)
   .use(jobController)
   .use(upskillController)
   .use(guidanceController)

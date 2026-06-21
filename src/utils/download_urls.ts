@@ -11,3 +11,7 @@ export function buildPlacementDownloadUrl(documentId: string) {
 export function buildPyqDownloadUrl(documentId: string) {
     return `${config.baseUrl}/api/pyq/documents/${documentId}/file`;
 }
+
+export function buildJntuDownloadUrl(documentId: string) {
+    return `${config.baseUrl}/api/jntu/documents/${documentId}/file`;
+}

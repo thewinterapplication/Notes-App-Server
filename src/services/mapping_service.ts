@@ -1,5 +1,6 @@
 import { MappingModel } from "../models/Mapping";
 import { PlacementMappingModel } from "../models/PlacementMapping";
+import { JntuMappingModel } from "../models/JntuMapping";
 
 export const DEFAULT_COURSES = ["CSE", "ECE", "EEE", "CIVIL", "MECHANICAL"];
 
@@ -17,7 +18,7 @@ export function normalizeMappingKey(value: string) {
 }
 
 async function getMappingsForModel(
-    model: typeof MappingModel | typeof PlacementMappingModel
+    model: typeof MappingModel | typeof PlacementMappingModel | typeof JntuMappingModel
 ) {
     const storedMappings = await model.find().sort({ course: 1 });
     const remainingMappings = new Map(
@@ -50,7 +51,7 @@ async function getMappingsForModel(
 }
 
 async function getMappingForCourseFromModel(
-    model: typeof MappingModel | typeof PlacementMappingModel,
+    model: typeof MappingModel | typeof PlacementMappingModel | typeof JntuMappingModel,
     course: string
 ) {
     const normalizedCourse = normalizeMappingKey(course);
@@ -75,4 +76,12 @@ export async function getMappingForCourse(course: string) {
 
 export async function getPlacementMappingForCourse(course: string) {
     return await getMappingForCourseFromModel(PlacementMappingModel, course);
+}
+
+export async function getJntuMappings() {
+    return await getMappingsForModel(JntuMappingModel);
+}
+
+export async function getJntuMappingForCourse(course: string) {
+    return await getMappingForCourseFromModel(JntuMappingModel, course);
 }

@@ -4,8 +4,9 @@ import { FileModel } from "../models/File";
 import { JobModel } from "../models/Job";
 import { PyqModel } from "../models/Pyq";
 import { PlacementModel } from "../models/Placement";
+import { JntuModel } from "../models/Jntu";
 import { UpskillModel } from "../models/Upskill";
-import { buildDocumentDownloadUrl, buildPlacementDownloadUrl, buildPyqDownloadUrl } from "../utils/download_urls";
+import { buildDocumentDownloadUrl, buildPlacementDownloadUrl, buildPyqDownloadUrl, buildJntuDownloadUrl } from "../utils/download_urls";
 import { linearizePdf, splitIntoPages } from "../utils/pdf_linearizer";
 
 const minioClient = new Client({
@@ -16,7 +17,7 @@ const minioClient = new Client({
     secretKey: config.minio.secretKey
 });
 
-type UploadKind = "document" | "pyq" | "placement" | "job" | "upskill" | "resume";
+type UploadKind = "document" | "pyq" | "placement" | "jntu" | "job" | "upskill" | "resume";
 
 function formatLogDetails(details: Record<string, unknown>) {
     return Object.entries(details)
@@ -291,6 +292,61 @@ export class FileStorageService {
         };
     }
 
+    async saveJntuFile(file: File, options?: { course?: string, subject?: string, customFileName?: string, author?: string, accessType?: string }) {
+        let finalFileName = file.name;
+        const normalizedAuthor =
+            options?.author?.trim().length
+                ? options.author.trim()
+                : "Unknown author";
+
+        if (options?.customFileName) {
+            const extension = file.name.split('.').pop();
+            if (options.customFileName.endsWith(`.${extension}`)) {
+                finalFileName = options.customFileName;
+            } else {
+                finalFileName = `${options.customFileName}.${extension}`;
+            }
+        }
+
+        const uniqueFileName = `${Date.now()}_${finalFileName}`;
+
+        const buffer = await prepareUploadBuffer(file, "jntu", uniqueFileName);
+        await uploadBufferToMinio("jntu", uniqueFileName, buffer, file.type);
+        const pageCount = file.type === "application/pdf"
+            ? await splitAndUploadPages(buffer, uniqueFileName, "jntu")
+            : 0;
+
+        const fileUrl = `${config.baseUrl}/files/${encodeURIComponent(uniqueFileName)}`;
+
+        const jntuDoc = await JntuModel.create({
+            fileName: finalFileName,
+            course: options?.course || "uncategorized",
+            subject: options?.subject || "uncategorized",
+            author: normalizedAuthor,
+            fileUrl: fileUrl,
+            accessType: options?.accessType || "free",
+            likesCount: 0,
+            viewCount: 0,
+            pageCount
+        });
+        const id = jntuDoc._id.toString();
+        const downloadUrl = buildJntuDownloadUrl(id);
+        logUpload("metadata-saved", {
+            kind: "jntu",
+            id,
+            storageKey: uniqueFileName,
+            bytes: buffer.length,
+            downloadUrl,
+        });
+
+        return {
+            url: fileUrl,
+            downloadUrl,
+            fileName: uniqueFileName,
+            id
+        };
+    }
+
     async saveJobPosting(file: File, options: { jobName: string, jobUrl: string, description: string }) {
         const sanitizedFileName = file.name.replace(/\s+/g, "_");
         const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
@@ -378,7 +434,7 @@ export class FileStorageService {
         return await minioClient.getObject(config.minio.bucket, fileName);
     }
 
-    async reprocessPages(type: "document" | "placement" | "pyq", id: string): Promise<number> {
+    async reprocessPages(type: "document" | "placement" | "pyq" | "jntu", id: string): Promise<number> {
         const kind: UploadKind = type as UploadKind;
 
         let fileUrl: string;
@@ -388,6 +444,10 @@ export class FileStorageService {
             fileUrl = doc.fileUrl;
         } else if (type === "placement") {
             const doc = await PlacementModel.findById(id).select("fileUrl").lean();
+            if (!doc) throw new Error("Document not found");
+            fileUrl = doc.fileUrl;
+        } else if (type === "jntu") {
+            const doc = await JntuModel.findById(id).select("fileUrl").lean();
             if (!doc) throw new Error("Document not found");
             fileUrl = doc.fileUrl;
         } else {
@@ -419,6 +479,8 @@ export class FileStorageService {
             await FileModel.findByIdAndUpdate(id, { pageCount: pages.length });
         } else if (type === "placement") {
             await PlacementModel.findByIdAndUpdate(id, { pageCount: pages.length });
+        } else if (type === "jntu") {
+            await JntuModel.findByIdAndUpdate(id, { pageCount: pages.length });
         } else {
             await PyqModel.findByIdAndUpdate(id, { pageCount: pages.length });
         }

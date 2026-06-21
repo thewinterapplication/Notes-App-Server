@@ -449,6 +449,26 @@
                 mappingsPageLabel: 'Manage Placement Mappings',
                 mappingsLoadError: 'Failed to load placement mappings',
             }
+            : routePath === '/jntu'
+            ? {
+                title: 'Uploaded JNTU Syllabus',
+                subtitle: 'Filter, review, and delete uploaded JNTU syllabus PDFs.',
+                backHref: '/upload-jntu',
+                uploadHref: '/upload-jntu',
+                apiUrl: '/api/jntu/documents',
+                itemLabel: 'JNTU file',
+                itemLabelPlural: 'JNTU files',
+                loadingSummary: 'Loading JNTU files...',
+                loadingHint: 'Fetching the latest uploaded JNTU syllabus files.',
+                deleteLabel: 'Delete JNTU File',
+                emptyState: 'No JNTU files match the current filters.',
+                deleteStorageError: 'JNTU entry deleted, but the stored file could not be removed completely.',
+                loadError: 'Failed to load JNTU files',
+                mappingsApiUrl: '/api/jntu-mappings',
+                mappingsPageHref: '/jntu-mappings',
+                mappingsPageLabel: 'Manage JNTU Mappings',
+                mappingsLoadError: 'Failed to load JNTU mappings',
+            }
             : {
                 title: 'Uploaded Documents',
                 subtitle: 'Filter, review, and delete uploaded notes PDFs.',

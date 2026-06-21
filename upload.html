@@ -403,6 +403,7 @@
                 <div class="tab-links">
                     <a href="/upload" class="tab-link" id="notes-upload-tab">Notes</a>
                     <a href="/upload-placement" class="tab-link" id="placements-upload-tab">Placements</a>
+                    <a href="/upload-jntu" class="tab-link" id="jntu-upload-tab">JNTU Syllabus</a>
                     <a href="/upload/jobs" class="tab-link">Jobs</a>
                     <a href="/upload/upskills" class="tab-link">Upskill</a>
                     <a href="/admin/resume-templates" class="tab-link">Resume</a>
@@ -414,6 +415,7 @@
                 <div class="tab-links">
                     <a href="/documents" class="tab-link">Notes</a>
                     <a href="/placements" class="tab-link">Placements</a>
+                    <a href="/jntu" class="tab-link">JNTU Syllabus</a>
                     <a href="/jobs" class="tab-link">Jobs</a>
                     <a href="/upskills" class="tab-link">Upskills</a>
                     <a href="/admin/resume-templates" class="tab-link">Resume Templates</a>
@@ -539,6 +541,18 @@
                 showAuthor: true,
                 showAccessType: true,
             },
+            '/upload-jntu': {
+                mode: 'jntu',
+                title: 'Upload JNTU Syllabus PDF',
+                subtitle: 'Securely save JNTU syllabus PDFs to storage',
+                uploadUrl: '/upload-jntu',
+                mappingsApiBase: '/api/jntu-mappings',
+                mappingsPageHref: '/jntu-mappings',
+                mappingsPageLabel: 'Manage JNTU Mappings',
+                footerMappingsLabel: 'JNTU Mappings',
+                showAuthor: true,
+                showAccessType: true,
+            },
             '/upload-pyq': {
                 mode: 'pyq',
                 title: 'Upload PYQ PDF',
@@ -574,6 +588,7 @@
         const footerMappingsLink = document.getElementById('footer-mappings-link');
         const notesUploadTab = document.getElementById('notes-upload-tab');
         const placementsUploadTab = document.getElementById('placements-upload-tab');
+        const jntuUploadTab = document.getElementById('jntu-upload-tab');
 
         let selectedFile = null;
 
@@ -588,6 +603,7 @@
         footerMappingsLink.textContent = currentConfig.footerMappingsLabel;
         notesUploadTab.classList.toggle('active', currentConfig.mode === 'notes');
         placementsUploadTab.classList.toggle('active', currentConfig.mode === 'placements');
+        if (jntuUploadTab) jntuUploadTab.classList.toggle('active', currentConfig.mode === 'jntu');
 
         dropZone.addEventListener('click', () => fileInput.click());
 
