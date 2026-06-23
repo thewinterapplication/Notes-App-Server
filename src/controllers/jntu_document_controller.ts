@@ -12,6 +12,7 @@ function serializeJntuDocument(document: any) {
         id,
         fileName: document.fileName,
         course: document.course || "uncategorized",
+        semester: document.semester || "uncategorized",
         subject: document.subject || "uncategorized",
         author: document.author || "Unknown author",
         fileUrl: document.fileUrl,
@@ -35,7 +36,7 @@ export const jntuDocumentController = new Elysia()
 
     .get("/api/jntu/documents", async () => {
         const documents = await JntuModel.find()
-            .select("fileName course subject author fileUrl accessType likesCount viewCount pageCount createdAt")
+            .select("fileName course semester subject author fileUrl accessType likesCount viewCount pageCount createdAt")
             .sort({ createdAt: -1 })
             .lean();
 

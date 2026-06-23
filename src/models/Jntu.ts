@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IJntuDocument extends Document {
     fileName: string;
     course: string;
+    semester: string;
     subject: string;
     author: string;
     fileUrl: string;
@@ -17,6 +18,7 @@ const JntuSchema: Schema = new Schema(
     {
         fileName: { type: String, required: true },
         course: { type: String, default: "uncategorized" },
+        semester: { type: String, default: "uncategorized" },
         subject: { type: String, default: "uncategorized" },
         author: { type: String, default: "Unknown author" },
         fileUrl: { type: String, required: true },

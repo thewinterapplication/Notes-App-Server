@@ -256,6 +256,13 @@
 
         <div class="course-tabs" id="course-tabs"></div>
 
+        <div class="course-tabs" id="semester-tabs" style="display: none;"></div>
+
+        <div class="add-row" id="semester-add-row" style="display: none;">
+            <input type="text" id="semester-input" class="add-input" placeholder="Enter semester name (e.g. 1-1)">
+            <button id="add-semester-btn" class="add-btn">Add Semester</button>
+        </div>
+
         <div class="add-row">
             <input type="text" id="subject-input" class="add-input" placeholder="Enter subject name">
             <button id="add-btn" class="add-btn">Add</button>
@@ -280,11 +287,13 @@
             : routePath === '/jntu-mappings'
             ? {
                 title: 'JNTU Mappings',
-                subtitle: 'Manage JNTU syllabus subjects for each course',
+                subtitle: 'Manage JNTU syllabus semesters and subjects for each course',
                 backHref: '/upload-jntu',
                 apiBase: '/api/jntu-mappings',
                 emptyState: 'No JNTU subjects mapped yet',
-                addCoursePrompt: 'Enter new JNTU course name or code:'
+                addCoursePrompt: 'Enter new JNTU course name or code:',
+                isJntu: true,
+                addSemesterPrompt: 'Enter new semester name (e.g. 1-1):'
             }
             : {
                 title: 'Mappings',
@@ -296,6 +305,10 @@
             };
 
         const courseTabs = document.getElementById('course-tabs');
+        const semesterTabs = document.getElementById('semester-tabs');
+        const semesterAddRow = document.getElementById('semester-add-row');
+        const semesterInput = document.getElementById('semester-input');
+        const addSemesterBtn = document.getElementById('add-semester-btn');
         const subjectInput = document.getElementById('subject-input');
         const addBtn = document.getElementById('add-btn');
         const subjectsList = document.getElementById('subjects-list');
@@ -316,7 +329,30 @@
         };
 
         let selectedCourse = null;
+        let selectedSemester = null;
         let availableMappings = [];
+
+        const isJntu = pageConfig.isJntu === true;
+
+        // JNTU gets a dedicated, always-visible semester input row. Subjects live
+        // under a selected semester, so the subject input stays disabled until one
+        // is chosen.
+        if (isJntu) {
+            semesterAddRow.style.display = 'flex';
+            addSemesterBtn.addEventListener('click', addSemester);
+            semesterInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') addSemester();
+            });
+        }
+
+        function updateSubjectInputState() {
+            if (!isJntu) return;
+            const hasSemester = !!selectedSemester;
+            subjectInput.disabled = !hasSemester;
+            subjectInput.placeholder = hasSemester
+                ? `Add subject to ${selectedSemester}`
+                : 'Add or select a semester first';
+        }
 
         function getCourseLabel(course) {
             return courseLabelMap[course] || course;
@@ -328,12 +364,41 @@
             );
         }
 
+        // For JNTU, subjects live under a selected semester. These helpers normalize
+        // access so the rest of the page can stay course/subject oriented.
+        function getSemesters(mapping) {
+            return Array.isArray(mapping?.semesters) ? mapping.semesters : [];
+        }
+
+        function getSelectedSemesterEntry() {
+            const mapping = getCourseMapping(selectedCourse);
+            if (!mapping || !selectedSemester) return null;
+            return getSemesters(mapping).find(
+                (semester) => semester.name.toLowerCase() === selectedSemester.toLowerCase()
+            ) || null;
+        }
+
+        function getCurrentSubjects() {
+            if (isJntu) {
+                const semester = getSelectedSemesterEntry();
+                return semester ? [...(semester.subjects || [])] : [];
+            }
+            const mapping = getCourseMapping(selectedCourse);
+            return mapping ? [...(mapping.subjects || [])] : [];
+        }
+
+        function courseCanDelete(mapping) {
+            return isJntu
+                ? getSemesters(mapping).length === 0
+                : (mapping.subjects || []).length === 0;
+        }
+
         function renderCourseTabs() {
             courseTabs.innerHTML = '';
 
             availableMappings.forEach((mapping) => {
                 const course = mapping.course;
-                const canDelete = (mapping.subjects || []).length === 0;
+                const canDelete = courseCanDelete(mapping);
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = `course-tab${course === selectedCourse ? ' active' : ''}${canDelete ? ' has-delete' : ''}`;
@@ -348,8 +413,9 @@
                     }
                     if (selectedCourse === course) return;
                     selectedCourse = course;
+                    selectedSemester = null;
                     renderCourseTabs();
-                    loadSubjects();
+                    onCourseSelected();
                 });
                 courseTabs.appendChild(button);
             });
@@ -364,6 +430,71 @@
             courseTabs.appendChild(addCourseBtn);
         }
 
+        // Render the semester selector (JNTU only). Picks the first semester when
+        // none is selected so subjects always have a parent context.
+        function renderSemesterTabs() {
+            if (!isJntu) {
+                semesterTabs.style.display = 'none';
+                return;
+            }
+
+            semesterTabs.style.display = 'flex';
+            semesterTabs.innerHTML = '';
+
+            const mapping = getCourseMapping(selectedCourse);
+            const semesters = getSemesters(mapping);
+
+            if (selectedSemester && !semesters.some((s) => s.name.toLowerCase() === selectedSemester.toLowerCase())) {
+                selectedSemester = null;
+            }
+            if (!selectedSemester && semesters.length > 0) {
+                selectedSemester = semesters[0].name;
+            }
+
+            semesters.forEach((semester) => {
+                const canDelete = (semester.subjects || []).length === 0;
+                const isActive = selectedSemester && semester.name.toLowerCase() === selectedSemester.toLowerCase();
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `course-tab${isActive ? ' active' : ''}${canDelete ? ' has-delete' : ''}`;
+                button.innerHTML = canDelete
+                    ? `<span class="course-tab-content"><span>${escapeHtml(semester.name)}</span><span class="course-delete-icon" title="Delete semester" aria-hidden="true">&times;</span></span>`
+                    : `<span class="course-tab-content"><span>${escapeHtml(semester.name)}</span></span>`;
+                button.addEventListener('click', async (event) => {
+                    if (canDelete && event.target.closest('.course-delete-icon')) {
+                        await deleteSemester(semester.name);
+                        return;
+                    }
+                    if (selectedSemester === semester.name) return;
+                    selectedSemester = semester.name;
+                    renderSemesterTabs();
+                    renderSubjects(getCurrentSubjects());
+                });
+                semesterTabs.appendChild(button);
+            });
+
+            const addSemesterTabBtn = document.createElement('button');
+            addSemesterTabBtn.type = 'button';
+            addSemesterTabBtn.className = 'course-tab course-add-tab';
+            addSemesterTabBtn.title = 'Add semester';
+            addSemesterTabBtn.setAttribute('aria-label', 'Add semester');
+            addSemesterTabBtn.textContent = '+';
+            addSemesterTabBtn.addEventListener('click', () => semesterInput.focus());
+            semesterTabs.appendChild(addSemesterTabBtn);
+
+            updateSubjectInputState();
+        }
+
+        // Called whenever a course becomes the active one.
+        function onCourseSelected() {
+            if (isJntu) {
+                renderSemesterTabs();
+                renderSubjects(getCurrentSubjects());
+            } else {
+                loadSubjects();
+            }
+        }
+
         async function loadCourses(preferredCourse = selectedCourse) {
             try {
                 const res = await fetch(pageConfig.apiBase);
@@ -374,7 +505,9 @@
 
                 if (availableMappings.length === 0) {
                     selectedCourse = null;
+                    selectedSemester = null;
                     renderCourseTabs();
+                    if (isJntu) semesterTabs.style.display = 'none';
                     renderSubjects([]);
                     return;
                 }
@@ -385,16 +518,19 @@
 
                 selectedCourse = matchedCourse?.course || availableMappings[0].course;
                 renderCourseTabs();
-                await loadSubjects();
+                onCourseSelected();
             } catch (err) {
                 availableMappings = [];
                 selectedCourse = null;
+                selectedSemester = null;
                 renderCourseTabs();
+                if (isJntu) semesterTabs.style.display = 'none';
                 renderSubjects([]);
             }
         }
 
-        // Load subjects for selected course
+        // Load subjects for selected course (non-JNTU). JNTU subjects are read from
+        // the in-memory mapping via the selected semester.
         async function loadSubjects() {
             if (!selectedCourse) {
                 renderSubjects([]);
@@ -455,8 +591,9 @@
             );
             if (existingCourse) {
                 selectedCourse = existingCourse.course;
+                selectedSemester = null;
                 renderCourseTabs();
-                loadSubjects();
+                onCourseSelected();
                 return;
             }
 
@@ -482,7 +619,7 @@
 
         async function deleteCourse(course) {
             const mapping = getCourseMapping(course);
-            if (!mapping || (mapping.subjects || []).length > 0) return;
+            if (!mapping || !courseCanDelete(mapping)) return;
             if (!confirm(`Delete "${course}"?`)) return;
 
             try {
@@ -504,6 +641,63 @@
             }
         }
 
+        // Replace the in-memory mapping's semesters from a server response and re-render.
+        function applyJntuResponse(data) {
+            const mapping = getCourseMapping(selectedCourse);
+            if (mapping) {
+                mapping.semesters = Array.isArray(data.semesters) ? data.semesters : [];
+            }
+            renderCourseTabs();
+            renderSemesterTabs();
+            renderSubjects(getCurrentSubjects());
+        }
+
+        async function addSemester() {
+            if (!selectedCourse) {
+                alert('Add a course first');
+                return;
+            }
+
+            const semester = semesterInput.value.trim().replace(/\s+/g, ' ');
+            if (!semester) return;
+
+            try {
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/semesters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ semester })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'Failed to add semester');
+                    return;
+                }
+                selectedSemester = semester;
+                semesterInput.value = '';
+                applyJntuResponse(data);
+                subjectInput.focus();
+            } catch (err) {
+                alert('Failed to add semester');
+            }
+        }
+
+        async function deleteSemester(semester) {
+            if (!confirm(`Delete semester "${semester}" from ${selectedCourse}?`)) return;
+
+            try {
+                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/semesters/${encodeURIComponent(semester)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (selectedSemester && selectedSemester.toLowerCase() === semester.toLowerCase()) {
+                    selectedSemester = null;
+                }
+                applyJntuResponse(data);
+            } catch (err) {
+                alert('Failed to delete semester');
+            }
+        }
+
         async function addSubject() {
             if (!selectedCourse) {
                 alert('Add a course first');
@@ -513,13 +707,33 @@
             const subject = subjectInput.value.trim();
             if (!subject) return;
 
+            if (isJntu && !selectedSemester) {
+                alert('Add a semester first');
+                return;
+            }
+
             try {
-                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects`, {
+                const url = isJntu
+                    ? `${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/semesters/${encodeURIComponent(selectedSemester)}/subjects`
+                    : `${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects`;
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ subject })
                 });
                 const data = await res.json();
+
+                if (isJntu) {
+                    if (!res.ok) {
+                        alert(data.error || 'Failed to add subject');
+                        return;
+                    }
+                    applyJntuResponse(data);
+                    subjectInput.value = '';
+                    subjectInput.focus();
+                    return;
+                }
+
                 if (data.subjects) {
                     const mapping = getCourseMapping(selectedCourse);
                     if (mapping) {
@@ -537,13 +751,23 @@
 
         // Delete subject
         async function deleteSubject(subject) {
-            if (!confirm(`Remove "${subject}" from ${selectedCourse}?`)) return;
+            const scope = isJntu ? `${selectedCourse} · ${selectedSemester}` : selectedCourse;
+            if (!confirm(`Remove "${subject}" from ${scope}?`)) return;
 
             try {
-                const res = await fetch(`${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects/${encodeURIComponent(subject)}`, {
+                const url = isJntu
+                    ? `${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/semesters/${encodeURIComponent(selectedSemester)}/subjects/${encodeURIComponent(subject)}`
+                    : `${pageConfig.apiBase}/${encodeURIComponent(selectedCourse)}/subjects/${encodeURIComponent(subject)}`;
+                const res = await fetch(url, {
                     method: 'DELETE'
                 });
                 const data = await res.json();
+
+                if (isJntu) {
+                    applyJntuResponse(data);
+                    return;
+                }
+
                 const mapping = getCourseMapping(selectedCourse);
                 if (mapping) {
                     mapping.subjects = [...(data.subjects || [])];

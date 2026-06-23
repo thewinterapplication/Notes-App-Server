@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { FileStorageService } from "../services/file_storage";
 import { JntuModel } from "../models/Jntu";
-import { getJntuMappingForCourse } from "../services/mapping_service";
+import { getJntuSemesters, getJntuSubjects } from "../services/mapping_service";
 import { buildJntuDownloadUrl } from "../utils/download_urls";
 
 function serializeJntuSummary(document: any) {
@@ -11,6 +11,7 @@ function serializeJntuSummary(document: any) {
         id,
         fileName: document.fileName,
         course: document.course || "uncategorized",
+        semester: document.semester || "uncategorized",
         subject: document.subject || "uncategorized",
         author: document.author || "Unknown author",
         fileUrl: document.fileUrl,
@@ -26,29 +27,29 @@ function serializeJntuSummary(document: any) {
 export const jntuController = new Elysia()
     .decorate('fileService', new FileStorageService())
 
-    // Get distinct subjects for a course (JNTU Syllabus)
-    .get("/api/jntu/courses/:course/subjects", async ({ params }) => {
-        const mapping = await getJntuMappingForCourse(params.course);
-        return { subjects: mapping.subjects };
+    // Get semesters for a course (JNTU Syllabus)
+    .get("/api/jntu/courses/:course/semesters", async ({ params }) => {
+        const semesters = await getJntuSemesters(decodeURIComponent(params.course));
+        return { semesters };
     })
 
-    // Get JNTU files by course and subject
-    .get("/api/jntu/courses/:course/subjects/:subject/files", async ({ params }) => {
+    // Get subjects for a course and semester
+    .get("/api/jntu/courses/:course/semesters/:semester/subjects", async ({ params }) => {
+        const subjects = await getJntuSubjects(
+            decodeURIComponent(params.course),
+            decodeURIComponent(params.semester)
+        );
+        return { subjects };
+    })
+
+    // Get JNTU files by course, semester and subject
+    .get("/api/jntu/courses/:course/semesters/:semester/subjects/:subject/files", async ({ params }) => {
         const files = await JntuModel.find({
-            course: params.course,
-            subject: params.subject
+            course: decodeURIComponent(params.course),
+            semester: decodeURIComponent(params.semester),
+            subject: decodeURIComponent(params.subject)
         })
-            .select("fileName course subject author fileUrl accessType likesCount viewCount pageCount createdAt")
-            .sort({ createdAt: -1 })
-            .lean();
-
-        return { files: files.map(serializeJntuSummary) };
-    })
-
-    // Get JNTU files by subject (legacy)
-    .get("/api/jntu/files/subject/:subject", async ({ params }) => {
-        const files = await JntuModel.find({ course: params.subject })
-            .select("fileName course subject author fileUrl accessType likesCount viewCount pageCount createdAt")
+            .select("fileName course semester subject author fileUrl accessType likesCount viewCount pageCount createdAt")
             .sort({ createdAt: -1 })
             .lean();
 

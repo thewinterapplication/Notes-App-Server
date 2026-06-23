@@ -393,6 +393,13 @@
                 </select>
             </div>
 
+            <div class="filter-group" id="semester-filter-group" style="display: none;">
+                <label class="filter-label" for="semester-filter">Semester</label>
+                <select id="semester-filter" class="input-field">
+                    <option value="">All Semesters</option>
+                </select>
+            </div>
+
             <div class="filter-group">
                 <label class="filter-label" for="subject-filter">Subject</label>
                 <select id="subject-filter" class="input-field">
@@ -468,6 +475,7 @@
                 mappingsPageHref: '/jntu-mappings',
                 mappingsPageLabel: 'Manage JNTU Mappings',
                 mappingsLoadError: 'Failed to load JNTU mappings',
+                isJntu: true,
             }
             : {
                 title: 'Uploaded Documents',
@@ -498,10 +506,17 @@
         document.getElementById('manage-mappings-link').textContent = pageConfig.mappingsPageLabel;
         document.getElementById('empty-state').textContent = pageConfig.emptyState;
 
+        const isJntu = pageConfig.isJntu === true;
         const searchInput = document.getElementById('search-input');
         const courseFilter = document.getElementById('course-filter');
+        const semesterFilter = document.getElementById('semester-filter');
+        const semesterFilterGroup = document.getElementById('semester-filter-group');
         const subjectFilter = document.getElementById('subject-filter');
         const accessFilter = document.getElementById('access-filter');
+
+        if (isJntu) {
+            semesterFilterGroup.style.display = 'flex';
+        }
         const clearFiltersBtn = document.getElementById('clear-filters-btn');
         const refreshBtn = document.getElementById('refresh-btn');
         const summaryCount = document.getElementById('summary-count');
@@ -586,13 +601,60 @@
             selectElement.value = '';
         }
 
+        function getMappingSubjects(mapping) {
+            if (!mapping) return [];
+            if (isJntu) {
+                const semesters = Array.isArray(mapping.semesters) ? mapping.semesters : [];
+                return semesters.flatMap((semester) => Array.isArray(semester.subjects) ? semester.subjects : []);
+            }
+            return Array.isArray(mapping.subjects) ? mapping.subjects : [];
+        }
+
         function getMappedSubjects(course) {
             if (!course) {
-                return allMappings.flatMap((mapping) => Array.isArray(mapping.subjects) ? mapping.subjects : []);
+                return allMappings.flatMap((mapping) => getMappingSubjects(mapping));
             }
 
             const mapping = allMappings.find((item) => normalizeKey(item.course) === normalizeKey(course));
-            return Array.isArray(mapping?.subjects) ? mapping.subjects : [];
+
+            if (isJntu && mapping) {
+                const selectedSemester = normalizeKey(semesterFilter.value, '');
+                const semesters = Array.isArray(mapping.semesters) ? mapping.semesters : [];
+                if (selectedSemester) {
+                    const matched = semesters.find((semester) => normalizeKey(semester.name) === selectedSemester);
+                    return Array.isArray(matched?.subjects) ? matched.subjects : [];
+                }
+                return semesters.flatMap((semester) => Array.isArray(semester.subjects) ? semester.subjects : []);
+            }
+
+            return getMappingSubjects(mapping);
+        }
+
+        function getMappedSemesters(course) {
+            const scoped = course
+                ? allMappings.filter((item) => normalizeKey(item.course) === normalizeKey(course))
+                : allMappings;
+            return scoped.flatMap((mapping) =>
+                (Array.isArray(mapping.semesters) ? mapping.semesters : []).map((semester) => semester.name)
+            );
+        }
+
+        function syncSemesterOptions() {
+            if (!isJntu) return;
+            const selectedCourse = courseFilter.value;
+            const scopedDocuments = selectedCourse
+                ? allDocuments.filter((document) => normalizeKey(document.course) === normalizeKey(selectedCourse))
+                : allDocuments;
+
+            rebuildSelectOptions(
+                semesterFilter,
+                getUniqueValues([
+                    ...getMappedSemesters(selectedCourse),
+                    ...scopedDocuments.map((document) => document.semester)
+                ]),
+                'All Semesters',
+                semesterFilter.value
+            );
         }
 
         async function parseJson(response) {
@@ -617,9 +679,15 @@
 
         function syncSubjectOptions() {
             const selectedCourse = courseFilter.value;
-            const scopedDocuments = selectedCourse
+            const selectedSemester = semesterFilter.value;
+            let scopedDocuments = selectedCourse
                 ? allDocuments.filter((document) => normalizeKey(document.course) === normalizeKey(selectedCourse))
                 : allDocuments;
+            if (isJntu && selectedSemester) {
+                scopedDocuments = scopedDocuments.filter(
+                    (document) => normalizeKey(document.semester) === normalizeKey(selectedSemester)
+                );
+            }
 
             rebuildSelectOptions(
                 subjectFilter,
@@ -635,17 +703,20 @@
         function getFilteredDocuments() {
             const searchTerm = searchInput.value.trim().toLowerCase();
             const selectedCourse = normalizeKey(courseFilter.value, '');
+            const selectedSemester = normalizeKey(semesterFilter.value, '');
             const selectedSubject = normalizeKey(subjectFilter.value, '');
             const selectedAccessType = normalizeKey(accessFilter.value, '');
 
             return allDocuments.filter((document) => {
                 const normalizedCourse = normalizeKey(document.course);
+                const normalizedSemester = normalizeKey(document.semester);
                 const normalizedSubject = normalizeKey(document.subject);
                 const normalizedAccessType = normalizeKey(document.accessType, 'free');
                 const haystack = [
                     document.fileName,
                     document.author,
                     normalizeValue(document.course),
+                    ...(isJntu ? [normalizeValue(document.semester)] : []),
                     normalizeValue(document.subject)
                 ].join(' ').toLowerCase();
 
@@ -654,6 +725,10 @@
                 }
 
                 if (selectedCourse && normalizedCourse !== selectedCourse) {
+                    return false;
+                }
+
+                if (isJntu && selectedSemester && normalizedSemester !== selectedSemester) {
                     return false;
                 }
 
@@ -706,6 +781,7 @@
             filteredDocuments.forEach((doc) => {
                 const card = document.createElement('article');
                 const normalizedCourse = normalizeValue(doc.course);
+                const normalizedSemester = normalizeValue(doc.semester);
                 const normalizedSubject = normalizeValue(doc.subject);
                 const normalizedAuthor = normalizeValue(doc.author, 'Unknown author');
                 const normalizedAccessType = normalizeValue(doc.accessType, 'free').toLowerCase();

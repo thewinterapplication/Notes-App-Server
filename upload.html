@@ -457,6 +457,15 @@
             </div>
         </div>
 
+        <div class="form-group hidden" id="semester-group">
+            <label class="form-label" for="semester-select">Semester</label>
+            <div class="input-row">
+                <select id="semester-select" class="input-field">
+                    <option value="" disabled selected>Select Semester</option>
+                </select>
+            </div>
+        </div>
+
         <div class="form-group">
             <label class="form-label" for="subject-select">Subject</label>
             <div class="input-row">
@@ -552,6 +561,7 @@
                 footerMappingsLabel: 'JNTU Mappings',
                 showAuthor: true,
                 showAccessType: true,
+                isJntu: true,
             },
             '/upload-pyq': {
                 mode: 'pyq',
@@ -770,6 +780,7 @@
             uploadBtn.textContent = 'Uploading...';
 
             const courseSelect = document.getElementById('course-select');
+            const semesterSelect = document.getElementById('semester-select');
             const subjectSelect = document.getElementById('subject-select');
             const customFileNameInput = document.getElementById('custom-filename');
             const authorNameInput = document.getElementById('author-name');
@@ -782,6 +793,10 @@
 
             if (courseSelect.value) {
                 formData.append('course', courseSelect.value);
+            }
+
+            if (currentConfig.isJntu && semesterSelect.value) {
+                formData.append('semester', semesterSelect.value);
             }
 
             if (subjectSelect.value) {
@@ -826,7 +841,13 @@
     <script>
         // Separate script for UI logic to keep things clean
         const subjectSelect = document.getElementById('subject-select');
+        const semesterSelect = document.getElementById('semester-select');
+        const semesterGroup = document.getElementById('semester-group');
         const courseSelectEl = document.getElementById('course-select');
+        // For JNTU, the mapping nests subjects under semesters; cache the selected
+        // course's semesters so the subject list can follow the chosen semester.
+        let jntuSemesters = [];
+        semesterGroup.classList.toggle('hidden', !currentConfig.isJntu);
         const courseLabelMap = {
             CSE: 'CSE - Computer Science and Engineering',
             ECE: 'ECE - Electronics and Communication Engineering',
@@ -871,6 +892,31 @@
             });
 
             subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+            if (currentConfig.isJntu) {
+                jntuSemesters = [];
+                semesterSelect.innerHTML = '<option value="" disabled selected>Select Semester</option>';
+            }
+        }
+
+        function populateSubjectOptions(subjects) {
+            subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+            if (subjects && subjects.length > 0) {
+                [...subjects].sort().forEach((subject) => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = subject;
+                    subjectSelect.add(option);
+                });
+            }
+        }
+
+        if (currentConfig.isJntu) {
+            semesterSelect.addEventListener('change', () => {
+                const match = jntuSemesters.find(
+                    (semester) => semester.name === semesterSelect.value
+                );
+                populateSubjectOptions(match ? match.subjects : []);
+            });
         }
 
         async function loadCourses() {
@@ -887,24 +933,38 @@
             }
         }
 
-        // Load subjects from mappings API when course changes
+        // Load subjects (or semesters, for JNTU) from mappings API when course changes
         courseSelectEl.addEventListener('change', async () => {
             const course = courseSelectEl.value;
+
+            if (currentConfig.isJntu) {
+                semesterSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+                subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
+
+                try {
+                    const response = await fetch(`${currentConfig.mappingsApiBase}/${encodeURIComponent(course)}`);
+                    const data = await response.json();
+                    jntuSemesters = Array.isArray(data.semesters) ? data.semesters : [];
+                    semesterSelect.innerHTML = '<option value="" disabled selected>Select Semester</option>';
+                    jntuSemesters.forEach((semester) => {
+                        const option = document.createElement('option');
+                        option.value = semester.name;
+                        option.textContent = semester.name;
+                        semesterSelect.add(option);
+                    });
+                } catch (error) {
+                    jntuSemesters = [];
+                    semesterSelect.innerHTML = '<option value="" disabled selected>Select Semester</option>';
+                }
+                return;
+            }
+
             subjectSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
 
             try {
                 const response = await fetch(`${currentConfig.mappingsApiBase}/${encodeURIComponent(course)}`);
                 const data = await response.json();
-                subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
-
-                if (data.subjects && data.subjects.length > 0) {
-                    data.subjects.sort().forEach(subject => {
-                        const option = document.createElement('option');
-                        option.value = subject;
-                        option.textContent = subject;
-                        subjectSelect.add(option);
-                    });
-                }
+                populateSubjectOptions(data.subjects);
             } catch (error) {
                 subjectSelect.innerHTML = '<option value="" disabled selected>Select Subject</option>';
             }

@@ -10,7 +10,7 @@ export const jntuUploadController = new Elysia({ prefix: "/upload-jntu" })
         return Bun.file("upload.html");
     })
     .post("/", async ({ body, storage }) => {
-        const { file, course, subject, customFileName, author, accessType } = body;
+        const { file, course, semester, subject, customFileName, author, accessType } = body;
 
         if (!file) {
             return { error: "No file uploaded" };
@@ -19,6 +19,7 @@ export const jntuUploadController = new Elysia({ prefix: "/upload-jntu" })
         try {
             const result = await storage.saveJntuFile(file, {
                 course,
+                semester,
                 subject,
                 customFileName,
                 author,
@@ -32,6 +33,7 @@ export const jntuUploadController = new Elysia({ prefix: "/upload-jntu" })
         body: t.Object({
             file: t.File(),
             course: t.Optional(t.String()),
+            semester: t.Optional(t.String()),
             subject: t.Optional(t.String()),
             customFileName: t.Optional(t.String()),
             author: t.Optional(t.String()),

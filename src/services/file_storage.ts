@@ -292,7 +292,7 @@ export class FileStorageService {
         };
     }
 
-    async saveJntuFile(file: File, options?: { course?: string, subject?: string, customFileName?: string, author?: string, accessType?: string }) {
+    async saveJntuFile(file: File, options?: { course?: string, semester?: string, subject?: string, customFileName?: string, author?: string, accessType?: string }) {
         let finalFileName = file.name;
         const normalizedAuthor =
             options?.author?.trim().length
@@ -321,6 +321,7 @@ export class FileStorageService {
         const jntuDoc = await JntuModel.create({
             fileName: finalFileName,
             course: options?.course || "uncategorized",
+            semester: options?.semester || "uncategorized",
             subject: options?.subject || "uncategorized",
             author: normalizedAuthor,
             fileUrl: fileUrl,
