@@ -89,6 +89,15 @@ const app = new Elysia()
     () => Bun.file("cancellation-and-refunds.html")
   )
 
+  // Predefined broadcast-notification images (fixed, one per content type —
+  // see notification_service.ts). Plain static files, no DB/MinIO involved.
+  .get("/assets/notifications/notes.png", () => Bun.file("assets/notifications/notes.png"))
+  .get("/assets/notifications/jntu.png", () => Bun.file("assets/notifications/jntu.png"))
+  .get("/assets/notifications/placement.png", () => Bun.file("assets/notifications/placement.png"))
+  .get("/assets/notifications/job.png", () => Bun.file("assets/notifications/job.png"))
+  .get("/assets/notifications/upskill.png", () => Bun.file("assets/notifications/upskill.png"))
+  .get("/assets/notifications/resume.png", () => Bun.file("assets/notifications/resume.png"))
+
   // Register Controllers
   .use(uploadController)
   .use(otpController)
