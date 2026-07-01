@@ -452,6 +452,34 @@ const introTrialForTemplate = (template: AppSubscriptionPlanTemplate) =>
         ? resolveMonthlyIntroTrialConfig()
         : { amountInPaise: null, periodDays: null };
 
+// Word describing the intro trial length, e.g. "Weekly", "Monthly",
+// "10-Day", "2-Week" — mirrors the day-bucketing used for the trial copy
+// shown in the app (see SubscriptionPlan.introductoryPeriodLabel).
+const introPeriodWord = (days: number): string => {
+    if (days <= 0) return "Monthly";
+    if (days === 1) return "Daily";
+    if (days % 30 === 0) {
+        const months = days / 30;
+        return months === 1 ? "Monthly" : `${months}-Month`;
+    }
+    if (days % 7 === 0) {
+        const weeks = days / 7;
+        return weeks === 1 ? "Weekly" : `${weeks}-Week`;
+    }
+    return `${days}-Day`;
+};
+
+// The plan title should reflect the actual configured trial length
+// (RAZORPAY_MONTHLY_TRIAL_DAYS) rather than always saying "Monthly Pass".
+// Plans without an intro trial (e.g. yearly) keep their static title.
+const resolvePlanTitle = (
+    template: AppSubscriptionPlanTemplate,
+    introTrialPeriodDays: number | null
+) =>
+    introTrialPeriodDays
+        ? `${introPeriodWord(introTrialPeriodDays)} Pass`
+        : template.fallbackTitle;
+
 const mapPlanEntityToAppPlan = (
     template: AppSubscriptionPlanTemplate,
     entity: RazorpayPlanEntity
@@ -461,7 +489,7 @@ const mapPlanEntityToAppPlan = (
     return {
         code: template.code,
         planId: entity.id,
-        title: entity.item.name || template.fallbackTitle,
+        title: entity.item.name || resolvePlanTitle(template, introTrial.periodDays),
         subtitle: entity.item.description || template.fallbackDescription,
         description: entity.item.description || template.fallbackDescription,
         badge: template.badge,
@@ -488,7 +516,7 @@ const mapConfiguredAmountToAppPlan = (
     return {
         code: template.code,
         planId: buildLocalConfiguredPlanId(template.code, amountInPaise),
-        title: template.fallbackTitle,
+        title: resolvePlanTitle(template, introTrial.periodDays),
         subtitle: template.fallbackDescription,
         description: template.fallbackDescription,
         badge: template.badge,
@@ -677,7 +705,7 @@ export const createRazorpaySubscription = async (args: {
                     addons: [
                         {
                             item: {
-                                name: "Introductory first month access",
+                                name: `Introductory ${introPeriodWord(introTrialDays!).toLowerCase()} access`,
                                 amount: introTrialAmountInPaise,
                                 currency: args.plan.currency || "INR"
                             }

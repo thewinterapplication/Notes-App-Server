@@ -22,6 +22,7 @@ import { upskillController } from "./controllers/upskill_controller";
 import { guidanceController } from "./controllers/guidance_controller";
 import { adminLoginController } from "./controllers/admin_login_controller";
 import { resumeTemplateController } from "./controllers/resume_template_controller";
+import { fcmController } from "./controllers/fcm_controller";
 import { connectDB } from "./db";
 
 // Cron job to ping Render server every 12 minutes to prevent spin-down
@@ -111,6 +112,7 @@ const app = new Elysia()
   .use(guidanceController)
   .use(adminLoginController)
   .use(resumeTemplateController)
+  .use(fcmController)
 
   .listen({
     port: 3000,

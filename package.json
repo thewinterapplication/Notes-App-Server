@@ -9,6 +9,7 @@
   "dependencies": {
     "cron": "^4.4.0",
     "elysia": "latest",
+    "firebase-admin": "^13.0.0",
     "googleapis": "^144.0.0",
     "minio": "^8.0.6",
     "mongoose": "^9.1.2"

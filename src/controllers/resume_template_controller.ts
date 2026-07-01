@@ -3,6 +3,7 @@ import { ResumeTemplateModel } from "../models/ResumeTemplate";
 import { FileStorageService } from "../services/file_storage";
 import { requireAdminAuth } from "../utils/admin_auth";
 import { config } from "../config";
+import { broadcastNotificationInBackground } from "../services/notification_service";
 
 function buildResumeAdminHtml(templates: any[]): string {
     const rows = templates.map((tp) => `
@@ -296,6 +297,11 @@ export const resumeTemplateController = new Elysia()
             return { error: "Unauthorized" };
         }
         const template = await ResumeTemplateModel.create(body);
+        broadcastNotificationInBackground({
+            title: "New resume template added",
+            body: template.name,
+            data: { type: "resume", id: template._id.toString() }
+        });
         return { success: true, template };
     }, {
         body: t.Object({
@@ -329,6 +335,11 @@ export const resumeTemplateController = new Elysia()
                 thumbnailUrl,
                 description: description || "",
                 sortOrder: sortOrder ? parseInt(sortOrder, 10) || 0 : 0,
+            });
+            broadcastNotificationInBackground({
+                title: "New resume template added",
+                body: template.name,
+                data: { type: "resume", id: template._id.toString() }
             });
             return { success: true, template };
         } catch (error: any) {

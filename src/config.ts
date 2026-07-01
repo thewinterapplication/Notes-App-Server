@@ -24,6 +24,12 @@ const GOOGLE_ADMIN_REFRESH_TOKEN = process.env.GOOGLE_ADMIN_REFRESH_TOKEN || "";
 const GOOGLE_ADMIN_CALENDAR_ID = process.env.GOOGLE_ADMIN_CALENDAR_ID || "primary";
 const ADMIN_DASHBOARD_KEY = process.env.ADMIN_DASHBOARD_KEY || "";
 
+// Firebase Cloud Messaging (broadcast push notifications). The service
+// account JSON is generated from Firebase Console > Project Settings >
+// Service Accounts > Generate new private key, and stored as a single
+// env var holding the raw JSON string (or base64 of it).
+const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || "";
+
 export const config = {
     baseUrl: BASE_URL,
     minio: {
@@ -58,4 +64,7 @@ export const config = {
         adminCalendarId: GOOGLE_ADMIN_CALENDAR_ID,
     },
     adminDashboardKey: ADMIN_DASHBOARD_KEY,
+    firebase: {
+        serviceAccountJson: FIREBASE_SERVICE_ACCOUNT_JSON,
+    },
 };

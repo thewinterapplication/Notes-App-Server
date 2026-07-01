@@ -8,6 +8,7 @@ import { JntuModel } from "../models/Jntu";
 import { UpskillModel } from "../models/Upskill";
 import { buildDocumentDownloadUrl, buildPlacementDownloadUrl, buildPyqDownloadUrl, buildJntuDownloadUrl } from "../utils/download_urls";
 import { linearizePdf, splitIntoPages } from "../utils/pdf_linearizer";
+import { broadcastNotificationInBackground } from "./notification_service";
 
 const minioClient = new Client({
     endPoint: config.minio.endPoint,
@@ -172,6 +173,11 @@ export class FileStorageService {
         });
         const id = fileDoc._id.toString();
         const downloadUrl = buildDocumentDownloadUrl(id);
+        broadcastNotificationInBackground({
+            title: "New notes added",
+            body: `${finalFileName} — ${fileDoc.subject}`,
+            data: { type: "notes", id }
+        });
         logUpload("metadata-saved", {
             kind: "document",
             id,
@@ -276,6 +282,11 @@ export class FileStorageService {
         });
         const id = placementDoc._id.toString();
         const downloadUrl = buildPlacementDownloadUrl(id);
+        broadcastNotificationInBackground({
+            title: "New placement material added",
+            body: `${finalFileName} — ${placementDoc.subject}`,
+            data: { type: "placement", id }
+        });
         logUpload("metadata-saved", {
             kind: "placement",
             id,
@@ -332,6 +343,11 @@ export class FileStorageService {
         });
         const id = jntuDoc._id.toString();
         const downloadUrl = buildJntuDownloadUrl(id);
+        broadcastNotificationInBackground({
+            title: "New JNTU syllabus added",
+            body: `${finalFileName} — ${jntuDoc.course} Sem ${jntuDoc.semester}`,
+            data: { type: "jntu", id }
+        });
         logUpload("metadata-saved", {
             kind: "jntu",
             id,
@@ -363,6 +379,11 @@ export class FileStorageService {
             description: options.description.trim(),
             imageUrl
         });
+        broadcastNotificationInBackground({
+            title: "New job posted",
+            body: jobDoc.jobName,
+            data: { type: "job", id: jobDoc._id.toString() }
+        });
         logUpload("metadata-saved", {
             kind: "job",
             id: jobDoc._id.toString(),
@@ -393,6 +414,11 @@ export class FileStorageService {
             upskillUrl: options.upskillUrl.trim(),
             description: options.description.trim(),
             imageUrl
+        });
+        broadcastNotificationInBackground({
+            title: "New upskill session added",
+            body: upskillDoc.upskillName,
+            data: { type: "upskill", id: upskillDoc._id.toString() }
         });
         logUpload("metadata-saved", {
             kind: "upskill",

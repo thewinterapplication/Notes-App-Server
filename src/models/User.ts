@@ -56,6 +56,7 @@ export interface IUser extends Document {
     activeSessionId?: string | null;
     activeDeviceId?: string | null;
     sessionUpdatedAt?: Date | null;
+    fcmToken?: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -351,6 +352,10 @@ const UserSchema = new Schema<IUser>(
         },
         sessionUpdatedAt: {
             type: Date,
+            default: null
+        },
+        fcmToken: {
+            type: String,
             default: null
         }
     },
